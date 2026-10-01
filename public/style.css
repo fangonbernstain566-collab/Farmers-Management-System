@@ -1,0 +1,435 @@
+/* Earthy, accessible theme designed for mobile & senior readability */
+/* Updated with the fresh paddy field and slate-blue color palette */
+:root {
+    /* Background color using soft morning sky / ice blue */
+    --bg-color: #e0ecf2;
+    /* Primary green theme mapped to rich paddy green */
+    --primary: #50801d;
+    /* Primary light/hover color mapped to bright fresh lime-green */
+    --primary-light: #83c13b;
+    /* Accent color mapped to slate blue */
+    --accent: #4b737d;
+    /* Main text color mapped to deep dark slate for high contrast and readability */
+    --text: #182c2d;
+    /* Card background color */
+    --card-bg: #FFFFFF;
+    /* Border color mapped to soft muted slate */
+    --border: #8fa8b6;
+    --success: #35641b;
+    --success-bg: #edf7e7;
+    --warning: #805b12;
+    --warning-bg: #fff7df;
+    --error: #9c3838;
+    --error-bg: #fceeee;
+}
+
+/* Global reset and typography setup */
+/* Applies universal box-sizing and clean font styling */
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+
+/* Base body layout configuration */
+/* Sets up overall application background, text color, and flex layout */
+body { background-color: var(--bg-color); color: var(--text); font-size: 18px; display: flex; min-height: 100vh; flex-direction: column; }
+body.modal-open { overflow: hidden; }
+
+.toast {
+    position: fixed;
+    top: 22px;
+    right: 24px;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: min(420px, calc(100vw - 32px));
+    padding: 15px 16px;
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--primary);
+    border-radius: 10px;
+    background: var(--card-bg);
+    box-shadow: 0 10px 28px rgba(24,44,45,0.18);
+    color: var(--text);
+    animation: toastIn 0.22s ease-out;
+}
+.toast-success { border-left-color: var(--success); }
+.toast-warning { border-left-color: var(--warning); }
+.toast-error { border-left-color: var(--error); }
+.toast-icon { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%; background: var(--success-bg); color: var(--success); font-weight: 800; }
+.toast-warning .toast-icon { background: var(--warning-bg); color: var(--warning); }
+.toast-error .toast-icon { background: var(--error-bg); color: var(--error); }
+.toast-message { flex: 1; font-size: 0.92rem; line-height: 1.4; }
+.toast-close { width: auto; margin: 0; padding: 2px 6px; background: transparent; color: var(--text); font-size: 1.35rem; line-height: 1; }
+.toast-close:hover { background: var(--bg-color); color: var(--primary); }
+.toast-hiding { animation: toastOut 0.22s ease-in forwards; }
+
+.confirm-modal { position: fixed; inset: 0; z-index: 2100; display: grid; place-items: center; padding: 20px; background: rgba(24,44,45,0.46); }
+.confirm-modal[hidden] { display: none; }
+.confirm-dialog { width: min(430px, 100%); padding: 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); box-shadow: 0 18px 45px rgba(24,44,45,0.25); text-align: center; animation: modalIn 0.18s ease-out; }
+.confirm-icon { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%; background: var(--warning-bg); color: var(--warning); font-size: 1.4rem; font-weight: 800; }
+.confirm-dialog h2 { margin-bottom: 8px; color: var(--text); font-size: 1.25rem; }
+.confirm-dialog p { margin-bottom: 22px; color: #526669; font-size: 0.95rem; line-height: 1.5; }
+.confirm-actions { display: flex; justify-content: center; gap: 10px; }
+.confirm-actions button { width: auto; min-width: 112px; margin: 0; }
+.confirm-cancel { background: var(--bg-color); color: var(--text); border: 1px solid var(--border); }
+.confirm-cancel:hover { background: #d2e1e7; }
+.confirm-submit { background: var(--primary); }
+.confirm-submit:hover { background: var(--primary-light); }
+.confirm-danger .confirm-submit { background: var(--error); }
+.confirm-danger .confirm-submit:hover { background: #7f2f2f; }
+.auth-message { margin: 12px 0; padding: 10px 12px; border-radius: 7px; font-size: 0.9rem; }
+.auth-message-error { background: var(--error-bg); color: var(--error); }
+
+@keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+@keyframes modalIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(131,193,59,0.55); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .toast, .confirm-dialog { animation: none; }
+    .toast-hiding { animation: none; opacity: 0; }
+}
+
+/* Main application container layout */
+/* Organizes sidebar and main content side-by-side */
+.app-container { display: flex; flex: 1; flex-direction: row; }
+
+/* Fixed Floating Sidebar Configuration */
+/* Styled with rounded corners, spacing from window edges, and shadow to create a floating appearance */
+.sidebar { 
+    width: 260px; 
+    background-color: var(--primary); 
+    color: white; 
+    padding: 20px; 
+    transition: all 0.3s;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+    z-index: 1000;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+/* Perfect Circular Sidebar Logo styling */
+/* Formats sidebar logo into a clean circular element */
+.sidebar img.logo { 
+    display: block; 
+    margin: 0 auto 20px; 
+    width: 120px; 
+    height: 120px; 
+    border-radius: 50%; 
+    object-fit: cover; 
+    border: 3px solid #FFFFFF;
+}
+
+/* Sidebar navigation list styling */
+/* Formats navigation items and interactive hover/active states */
+.sidebar ul { list-style: none; }
+.sidebar li a { display: block; color: #E8F0E6; text-decoration: none; padding: 14px 18px; margin-bottom: 8px; font-size: 1.1rem; border-radius: 8px; transition: 0.2s; }
+.sidebar li a:hover, .sidebar li a.active { background-color: var(--primary-light); color: #FFF; font-weight: bold; border-left: 5px solid var(--accent); }
+
+/* Shift main content so it does not hide under fixed floating sidebar */
+/* Adjusts left margin to account for sidebar width and floating margin offset */
+.content { 
+    flex: 1; 
+    padding: 30px; 
+    margin-left: 300px; /* Matches sidebar width (260px) + left offset (20px) + spacing gap (20px) */
+}
+
+/* Perfect Circular Header Logo */
+/* Formats header logo into a circular display */
+.header-logo { 
+    width: 70px; 
+    height: 70px; 
+    border-radius: 50%; 
+    object-fit: cover; 
+    vertical-align: middle; 
+    margin-right: 15px; 
+    border: 2px solid var(--primary);
+}
+
+/* Perfect Circular Auth (Login/Register) Logo */
+/* Formats authentication screens logo */
+.auth-container img.logo { 
+    width: 140px; 
+    height: 140px; 
+    border-radius: 50%; 
+    object-fit: cover; 
+    margin-bottom: 20px; 
+    border: 3px solid var(--primary);
+}
+
+/* Perfect Circular Profile Picture */
+/* Formats user profile images across the system */
+.profile-img {
+    width: 200px; /* Increased from 130px for a larger display */
+    height: 200px; /* Increased from 130px to maintain circular aspect ratio */
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary);
+    margin-bottom: 15px;
+    display: block;
+    flex-shrink: 0; /* Ensures image maintains size in flex layouts */
+}
+
+/* Content container card styling */
+/* Formats white container boxes with borders and shadow */
+.card { background: var(--card-bg); border-radius: 10px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+
+/* Form inputs and buttons layout styling */
+/* Formats text fields, dropdowns, and textareas */
+input, select, textarea, button { width: 100%; padding: 12px; margin: 8px 0 18px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; }
+button, .btn { background-color: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; text-align: center; text-decoration: none; display: inline-block; }
+button:hover, .btn:hover { background-color: var(--primary-light); }
+.btn-danger { background-color: var(--error); color: #ffffff; }
+.btn-danger:hover { background-color: #7f2f2f; }
+
+/* Data tables layout configuration */
+/* Formats tables for data display */
+table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+th, td { border: 1px solid var(--border); padding: 12px; text-align: left; }
+th { background-color: var(--primary); color: white; }
+
+/* Authentication container card styling */
+/* Centers login and registration forms */
+.auth-container { max-width: 450px; margin: 50px auto; background: white; padding: 30px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+
+/* Dedicated authentication layouts */
+.auth-page {
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 32px 18px;
+    overflow-x: hidden;
+    background:
+        radial-gradient(circle at 12% 15%, rgba(131, 193, 59, 0.18), transparent 28%),
+        radial-gradient(circle at 88% 85%, rgba(75, 115, 125, 0.16), transparent 30%),
+        var(--bg-color);
+}
+
+.auth-page::before,
+.auth-page::after {
+    position: absolute;
+    content: "";
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.auth-page::before {
+    width: 240px;
+    height: 240px;
+    top: -110px;
+    right: 8%;
+    border: 28px solid rgba(80, 128, 29, 0.08);
+}
+
+.auth-page::after {
+    width: 180px;
+    height: 180px;
+    bottom: -80px;
+    left: 8%;
+    border: 22px solid rgba(75, 115, 125, 0.08);
+}
+
+.auth-page .auth-container {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 470px);
+    max-width: none;
+    margin: 0;
+    padding: 38px 42px 34px;
+    overflow: hidden;
+    border: 1px solid rgba(143, 168, 182, 0.65);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 24px 60px rgba(24, 44, 45, 0.16);
+}
+
+.auth-page .auth-container::before {
+    display: block;
+    height: 5px;
+    margin: -38px -42px 30px;
+    content: "";
+    background: linear-gradient(90deg, var(--primary), var(--primary-light), var(--accent));
+}
+
+.auth-page .auth-container img.logo {
+    width: 86px;
+    height: 86px;
+    margin: 0 auto 18px;
+    padding: 5px;
+    border: 1px solid #d8e5d1;
+    background: #f7fbf4;
+    box-shadow: 0 8px 18px rgba(80, 128, 29, 0.12);
+}
+
+.auth-page .auth-container h2 {
+    margin-bottom: 8px;
+    color: var(--text);
+    font-size: 1.65rem;
+    letter-spacing: -0.02em;
+}
+
+.auth-page .auth-container form {
+    margin-top: 24px;
+}
+
+.auth-page .auth-container input,
+.auth-page .auth-container select {
+    min-height: 48px;
+    margin: 0 0 13px;
+    padding: 12px 14px;
+    border: 1px solid #c6d4d8;
+    border-radius: 9px;
+    background: #fbfdfd;
+    color: var(--text);
+    font-size: 0.92rem;
+}
+
+.auth-page .auth-container input:focus,
+.auth-page .auth-container select:focus {
+    border-color: var(--primary-light);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(131, 193, 59, 0.16);
+    outline: none;
+}
+
+.auth-page .auth-container button {
+    min-height: 48px;
+    margin: 7px 0 18px;
+    border-radius: 9px;
+    background: var(--primary);
+    font-size: 0.95rem;
+    letter-spacing: 0.01em;
+}
+
+.auth-page .auth-container button:hover {
+    background: var(--primary-light);
+}
+
+.auth-page .auth-container p {
+    color: #687b80;
+    font-size: 0.83rem;
+}
+
+.auth-page .auth-container p a {
+    color: var(--primary);
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.auth-page .auth-container p a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+.auth-register-card {
+    width: min(100%, 760px) !important;
+}
+
+.auth-register-card form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 13px;
+}
+
+.auth-register-card form > input,
+.auth-register-card form > button,
+.auth-register-card form > div,
+.auth-register-card form + p {
+    grid-column: 1 / -1;
+}
+
+.auth-register-card form > div {
+    display: flex;
+    gap: 13px !important;
+}
+
+.auth-register-card form > div > input,
+.auth-register-card form > div > select {
+    min-width: 0;
+    flex: 1;
+}
+
+@media (max-width: 620px) {
+    .auth-page {
+        padding: 18px 12px;
+    }
+
+    .auth-page .auth-container {
+        padding: 30px 22px 26px;
+        border-radius: 17px;
+    }
+
+    .auth-page .auth-container::before {
+        margin: -30px -22px 25px;
+    }
+
+    .auth-register-card form {
+        display: block;
+    }
+
+    .auth-register-card form > div {
+        gap: 9px !important;
+    }
+}
+
+/* Responsive adjustments for mobile view */
+/* Adjusts layout for smaller mobile screen widths */
+@media (max-width: 768px) {
+    .app-container { flex-direction: column; }
+    .sidebar { 
+        position: relative; 
+        width: 100%; 
+        height: auto; 
+        top: 0;
+        left: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .content { 
+        margin-left: 0; 
+    }
+}
+
+/* Simple Sliding Motion Transition Overlay Styles */
+/* Configures full-screen overlay and a clean sliding content box for page transitions */
+#animal-transition-overlay {
+    display: none; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: rgba(224, 236, 242, 0.95); 
+    z-index: 9999; 
+    justify-content: center; 
+    align-items: center; 
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.animal-parade-line {
+    background: var(--card-bg);
+    padding: 30px 50px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary);
+    animation: simpleSlideIn 0.5s ease-out forwards;
+}
+
+@keyframes simpleSlideIn {
+    0% { 
+        transform: translateY(-50px); 
+        opacity: 0; 
+    }
+    100% { 
+        transform: translateY(0); 
+        opacity: 1; 
+    }
+}
