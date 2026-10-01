@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 DEMO-ACCOUNTS.local.md
+DEMO-ACCOUNTS.local.private.md
 storage/
 coverage/
 *.log
