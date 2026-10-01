@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+DEMO-ACCOUNTS.local.md
+storage/
+coverage/
+*.log
