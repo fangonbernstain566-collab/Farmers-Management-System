@@ -122,6 +122,79 @@ describe("offline frontend rendering", () => {
     }
   });
 
+  it.each([
+    "dashboard-farmer-populated",
+    "dashboard-admin-populated",
+    "history-farmer-populated",
+    "history-admin-populated",
+    "profile-admin",
+  ])(
+    "uses one private proof modal in $0 without replacing receipt links",
+    async (name) => {
+      const item = scenario(name);
+      const html = await render(
+        name === "profile-admin"
+          ? {
+              ...item,
+              locals: {
+                ...item.locals,
+                allocations: scenario("history-admin-populated").locals.records,
+              },
+            }
+          : item,
+      );
+      expect(html.match(/id="proof-dialog"/g)).toHaveLength(1);
+      expect(html).toContain('data-proof-url="/images/proof/');
+      expect(html).toContain(
+        'aria-haspopup="dialog" aria-controls="proof-dialog"',
+      );
+      expect(html).not.toMatch(/<a\b[^>]*href="\/images\/proof\//);
+      expect(html).not.toMatch(/<a\b[^>]*href="\/(?:receipts\/proof|proof)\//);
+      const proofButtons = [
+        ...html.matchAll(/<button\b[^>]*data-proof-url=[^>]*>/g),
+      ];
+      expect(proofButtons.length).toBeGreaterThan(0);
+      for (const [button] of proofButtons) {
+        expect(button).toContain('type="button"');
+        expect(button).toContain('class="btn-view-proof ');
+        expect(button).not.toMatch(/\bhref=|\btarget=/);
+      }
+      expect(html).toContain('href="/receipts/21"');
+      expect(html).toContain("No proof uploaded");
+      expect(html).not.toContain("proof/sample.png");
+      expect(html).not.toMatch(/\son\w+=|\sstyle=/);
+    },
+  );
+
+  it("escapes proof metadata, omits private storage paths, and includes admin-only farmer details", async () => {
+    const payload = '<script>alert("unsafe")</script>';
+    const record = {
+      id: 31,
+      farmer_id: 7,
+      fullname: payload,
+      resource_name: payload,
+      allocated_quantity: "1",
+      unit: "kg",
+      status: "received",
+      created_at: "2026-10-02",
+      received_at: "2026-10-02 08:31:00",
+      proof_image: "private-storage/never-expose-this.png",
+    };
+    for (const role of ["farmer", "admin"]) {
+      const base = scenario("history-" + role + "-populated");
+      const html = await render({
+        ...base,
+        locals: { ...base.locals, records: [record] },
+      });
+      expect(html).not.toContain(payload);
+      expect(html).not.toContain(record.proof_image);
+      expect(html).toContain('data-proof-url="/images/proof/31"');
+      expect(html).toContain('data-proof-resource="&lt;script&gt;');
+      expect(html).toContain('data-proof-submitted="2026-10-02 08:31:00"');
+      expect(html.includes('data-proof-farmer="')).toBe(role === "admin");
+    }
+  });
+
   it("retains dynamic database values and escapes user-generated text", async () => {
     const item = scenario("dashboard-admin-populated");
     const html = await render(item);
@@ -148,6 +221,8 @@ describe("offline frontend rendering", () => {
     expect(html).toContain('data-receipt-png="Receipt-REC-000021"');
     expect(html).toContain("data-print");
     expect(html).toContain('src="/assets/vendor/html2canvas.min.js"');
+    expect(html).toContain('class="receipt-proof" src="/images/proof/21"');
+    expect(html).not.toContain('id="proof-dialog"');
     expect(html).not.toMatch(/\son\w+=|\sstyle=|<script(?![^>]*\bsrc=)/);
     const sprite = await readFile("public/vendor/lucide.svg", "utf8");
     for (const item of scenarios) {

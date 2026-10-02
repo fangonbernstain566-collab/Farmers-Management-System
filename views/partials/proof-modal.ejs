@@ -1,0 +1,17 @@
+<dialog class="proof-dialog no-print" id="proof-dialog" aria-labelledby="proof-title">
+  <header class="proof-dialog-header">
+    <div><span class="eyebrow">Supporting documentation</span><h2 id="proof-title">Proof of Receipt</h2></div>
+    <button type="button" class="button-icon" data-proof-close aria-label="Close proof viewer" autofocus><%- include('icon', { name: 'x' }) %></button>
+  </header>
+  <div class="proof-dialog-body" data-proof-body aria-busy="false" tabindex="0" role="region" aria-label="Proof file preview">
+    <dl class="proof-metadata">
+      <div data-proof-metadata="reference" hidden><dt>Distribution</dt><dd></dd></div>
+      <div data-proof-metadata="resource" hidden><dt>Resource</dt><dd></dd></div>
+      <div data-proof-metadata="farmer" hidden><dt>Farmer</dt><dd></dd></div>
+      <div data-proof-metadata="submitted" hidden><dt>Submitted</dt><dd></dd></div>
+    </dl>
+    <p class="proof-status" data-proof-status role="status"></p>
+    <div class="proof-preview" data-proof-preview hidden></div>
+  </div>
+  <footer class="proof-dialog-footer"><button type="button" class="button-secondary" data-proof-close>Close</button></footer>
+</dialog>

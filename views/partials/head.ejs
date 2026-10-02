@@ -6,8 +6,9 @@
   <meta name="theme-color" content="#195c42">
   <link rel="icon" href="/assets/logo.png" type="image/png">
   <title><%= title %> | Aringay Agriculture</title>
-  <link rel="stylesheet" href="/assets/app.css">
-  <script src="/assets/app.js" defer></script>
+  <% const assetRevision = typeof assetVersion === 'function' ? '?v=' + assetVersion() : ''; %>
+  <link rel="stylesheet" href="/assets/app.css<%= assetRevision %>">
+  <script src="/assets/app.js<%= assetRevision %>" defer></script>
 </head>
 <% const standalone = !user || ['/login', '/register'].includes(path); %>
 <body class="<%= standalone ? 'auth-page' : 'app-page' %>">

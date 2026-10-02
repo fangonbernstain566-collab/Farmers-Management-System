@@ -2,6 +2,20 @@
 
 document.documentElement.classList.add("js");
 
+document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+  const input = document.getElementById(button.getAttribute("aria-controls"));
+  if (!input) return;
+  button.hidden = false;
+  button.addEventListener("click", () => {
+    const visible = input.type === "password";
+    input.type = visible ? "text" : "password";
+    const label = visible ? "Hide password" : "Show password";
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(visible));
+    button.title = label;
+  });
+});
+
 function icon(name) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
@@ -43,6 +57,117 @@ document.addEventListener("click", (event) => {
   const button = event.target.closest(".toast-close");
   if (button) button.closest(".toast").remove();
 });
+
+/* Proof previews use the same authenticated, ownership-checked image route. */
+const proofDialog = document.getElementById("proof-dialog");
+if (proofDialog && typeof proofDialog.showModal === "function") {
+  const preview = proofDialog.querySelector("[data-proof-preview]");
+  const status = proofDialog.querySelector("[data-proof-status]");
+  const body = proofDialog.querySelector("[data-proof-body]");
+  let activeImage = null;
+  let proofTrigger = null;
+
+  function clearProof() {
+    if (activeImage) {
+      activeImage.onload = null;
+      activeImage.onerror = null;
+      activeImage.removeAttribute("src");
+      activeImage = null;
+    }
+    preview.replaceChildren();
+    preview.hidden = true;
+    status.textContent = "";
+    status.hidden = false;
+    body.setAttribute("aria-busy", "false");
+    proofDialog.querySelectorAll("[data-proof-metadata]").forEach((row) => {
+      row.querySelector("dd").textContent = "";
+      row.hidden = true;
+    });
+  }
+
+  document.querySelectorAll("[data-proof-url]").forEach((button) => {
+    button.disabled = false;
+  });
+  document.addEventListener(
+    "click",
+    (event) => {
+      const button = event.target.closest(
+        "button.btn-view-proof[data-proof-url]",
+      );
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      // Accept only the existing private route, never a storage or external URL.
+      const url = button.dataset.proofUrl;
+      if (!/^\/images\/proof\/[1-9]\d*$/.test(url || "")) {
+        notify("No proof uploaded.", "info");
+        return;
+      }
+      clearProof();
+      proofTrigger = button;
+      proofDialog.querySelectorAll("[data-proof-metadata]").forEach((row) => {
+        const key = row.dataset.proofMetadata;
+        const value = button.getAttribute("data-proof-" + key);
+        row.querySelector("dd").textContent = value || "";
+        row.hidden = !value;
+      });
+      body.scrollTop = 0;
+      body.setAttribute("aria-busy", "true");
+      status.textContent = "Loading proof file…";
+      if (!proofDialog.open) proofDialog.showModal();
+      document.body.classList.add("proof-modal-open");
+
+      const image = new Image();
+      activeImage = image;
+      image.alt =
+        "Proof of receipt for " +
+        (button.dataset.proofResource || "this distribution");
+      image.decoding = "async";
+      image.onload = () => {
+        if (activeImage !== image || !proofDialog.open) return;
+        body.setAttribute("aria-busy", "false");
+        status.textContent = "";
+        status.hidden = true;
+        preview.hidden = false;
+      };
+      image.onerror = () => {
+        if (activeImage !== image || !proofDialog.open) return;
+        body.setAttribute("aria-busy", "false");
+        preview.replaceChildren();
+        preview.hidden = true;
+        status.hidden = false;
+        status.textContent = "Unable to load the proof file.";
+      };
+      preview.append(image);
+      image.src = url;
+    },
+    { capture: true },
+  );
+  proofDialog.querySelectorAll("[data-proof-close]").forEach((button) => {
+    button.addEventListener("click", () => proofDialog.close());
+  });
+  proofDialog.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    const items = Array.from(
+      proofDialog.querySelectorAll('button, [tabindex="0"]'),
+    );
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  proofDialog.addEventListener("close", () => {
+    clearProof();
+    document.body.classList.remove("proof-modal-open");
+    proofTrigger?.focus({ preventScroll: true });
+    proofTrigger = null;
+  });
+}
 
 /* Mobile navigation keeps focus inside the drawer and restores it on close.
    Without JavaScript, navigation stays visible above the content. */

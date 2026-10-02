@@ -46,6 +46,11 @@ import { trashItems, restore, permanentDelete } from "../services/trash.js";
 import { upload, saveImage, removeImage, readImage } from "../uploads.js";
 export const pages = Router();
 pages.use(authenticated);
+// Proof controls must be rendered from the current templates after an update.
+pages.get(["/dashboard", "/history", "/profile"], (_req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  next();
+});
 pages.use(async (req, res, next) => {
   res.locals.unread = await unread(req.user!);
   next();

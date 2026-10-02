@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { ZodError } from "zod";
 import multer from "multer";
 import path from "node:path";
+import { statSync } from "node:fs";
 import { config } from "./config.js";
 import { PostgresSessionStore } from "./session-store.js";
 import { csrf, hydrate } from "./security.js";
@@ -16,6 +17,12 @@ export function createApp(store: session.Store = new PostgresSessionStore()) {
   if (config.TRUST_PROXY) app.set("trust proxy", config.TRUST_PROXY);
   app.set("view engine", "ejs");
   app.set("views", path.resolve("views"));
+  // A freshly rendered page must not reuse an older interaction script/style.
+  app.locals.assetVersion = () =>
+    Math.max(
+      statSync(path.resolve("public/app.js")).mtimeMs,
+      statSync(path.resolve("public/app.css")).mtimeMs,
+    ).toString();
   app.use(
     helmet({
       contentSecurityPolicy: {

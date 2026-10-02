@@ -1,0 +1,6 @@
+<% if (distribution.proof_image) { const thumbnail = typeof showThumbnail !== 'undefined' && showThumbnail; %>
+<button type="button" class="btn-view-proof <%= thumbnail ? 'proof-preview-trigger' : 'button button-ghost button-small' %>" data-proof-url="/images/proof/<%= distribution.id %>" data-proof-reference="LOG-<%= String(distribution.id).padStart(5, '0') %>" data-proof-resource="<%= distribution.resource_name %>" <% if (user.role === 'admin') { %>data-proof-farmer="<%= distribution.fullname %>"<% } %> data-proof-submitted="<%= distribution.received_at ?? '' %>" aria-haspopup="dialog" aria-controls="proof-dialog" aria-label="View proof for <%= distribution.resource_name %>, LOG-<%= distribution.id %>" disabled>
+  <% if (thumbnail) { %><img class="proof-thumbnail" src="/images/proof/<%= distribution.id %>" alt="" loading="lazy"><% } %>
+  <span class="proof-button-label"><%- include('icon', { name: 'eye' }) %> View Proof</span>
+</button>
+<% } else { %><small>No proof uploaded</small><% } %>

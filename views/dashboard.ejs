@@ -28,7 +28,7 @@
     <div class="section-heading"><div><h2>Receipt documentation</h2><p>Proof images from confirmed receipts.</p></div></div>
     <div class="documentation-grid">
       <% for (const d of documentation) { %>
-      <article><a href="/images/proof/<%= d.id %>" target="_blank" rel="noopener"><img class="proof-thumbnail" src="/images/proof/<%= d.id %>" alt="Proof for LOG-<%= d.id %>" loading="lazy"></a><p><%= d.fullname %><br><small><%= d.created_at %></small></p></article>
+      <article><%- include('partials/proof-button', { distribution: d, showThumbnail: true }) %><p><%= d.fullname %><br><small><%= d.created_at %></small></p></article>
       <% } if (!documentation.length) { %><%- include('partials/empty', { icon: 'receipt-text', heading: 'No documentation yet', description: 'Proof images will appear after farmers confirm receipt of resources.' }) %><% } %>
     </div>
   </section>
@@ -41,4 +41,4 @@
     </div>
   </section>
 </div>
-<%- include('partials/foot') %>
+<%- include('partials/foot', { proofModal: true }) %>

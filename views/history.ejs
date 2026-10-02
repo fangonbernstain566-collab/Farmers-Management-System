@@ -6,4 +6,4 @@
   <%- include('partials/stat', { label: 'Received', value: records.filter(r => r.status === 'received').length, icon: 'circle-check', detail: 'Confirmed resource receipts' }) %>
 </div>
 <section class="card"><div class="section-heading"><div><h2>Allocation records</h2><p>Resource quantities and distribution dates.</p></div></div><%- include('partials/distributions', { records }) %></section>
-<%- include('partials/foot') %>
+<%- include('partials/foot', { proofModal: true }) %>

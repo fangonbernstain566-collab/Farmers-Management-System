@@ -21,4 +21,4 @@
   <div class="table-wrap" tabindex="0" role="region" aria-label="Farmer complaint history"><table><thead><tr><th scope="col">Date</th><th scope="col">Subject</th><th scope="col">Message</th></tr></thead><tbody><% for (const c of complaints) { %><tr><td><%= c.created_at %></td><td><%= c.subject %></td><td><%= c.message %></td></tr><% } if (!complaints.length) { %><tr><td colspan="3"><%- include('partials/empty', { icon: 'message-square-warning', heading: 'No complaints recorded', description: 'This farmer’s logged concerns will appear here.' }) %></td></tr><% } %></tbody></table></div>
 </section>
 <% } %>
-<%- include('partials/foot') %>
+<%- include('partials/foot', { proofModal: true }) %>

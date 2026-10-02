@@ -16,7 +16,13 @@
       <fieldset class="form-section"><legend>Personal information</legend><div class="form-grid"><%- include('partials/fields', { record: null }) %></div></fieldset>
       <% } %>
       <label>Email address <span class="required" aria-hidden="true">*</span><input type="email" name="email" maxlength="100" autocomplete="email" required></label>
-      <label>Password <span class="required" aria-hidden="true">*</span><input type="password" name="password" autocomplete="<%= mode === 'register' ? 'new-password' : 'current-password' %>" <% if (mode === 'register') { %>minlength="8" maxlength="72" aria-describedby="password-help"<% } %> required></label>
+      <div class="password-field">
+        <label for="auth-password">Password <span class="required" aria-hidden="true">*</span></label>
+        <div class="password-input">
+          <input id="auth-password" type="password" name="password" autocomplete="<%= mode === 'register' ? 'new-password' : 'current-password' %>" <% if (mode === 'register') { %>minlength="8" maxlength="72" aria-describedby="password-help"<% } %> required>
+          <button type="button" class="button-icon password-toggle" data-password-toggle aria-controls="auth-password" aria-label="Show password" aria-pressed="false" title="Show password" hidden><%- include('partials/icon', { name: 'eye' }) %></button>
+        </div>
+      </div>
       <% if (mode === 'register') { %><p class="form-help" id="password-help">Use 8 or more characters with uppercase, lowercase, a number, and a symbol. Maximum 72 bytes.</p><% } %>
       <button class="button" type="submit"><%- include('partials/icon', { name: mode === 'login' ? 'log-in' : 'plus' }) %> <%= mode === 'login' ? 'Sign in' : 'Create account' %></button>
     <% } %>
