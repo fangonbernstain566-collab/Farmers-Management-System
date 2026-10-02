@@ -1,0 +1,22 @@
+<section class="auth-overview" aria-label="Agriculture management overview">
+  <div class="auth-background-icons" aria-hidden="true">
+    <% for (const name of ['sprout', 'tractor', 'bell', 'truck', 'leaf', 'map-pin']) { %><%- include('icon', { name }) %><% } %>
+  </div>
+  <p class="auth-office"><span class="auth-dot" aria-hidden="true"></span> Municipal Agriculture Office</p>
+  <div class="auth-overview-content">
+    <div class="auth-scene" aria-hidden="true">
+      <div class="auth-orbit auth-orbit-outer"></div><div class="auth-orbit auth-orbit-inner"></div>
+      <img src="/assets/images/auth-farm.svg" alt="" width="600" height="440" class="auth-farm">
+      <div class="auth-scene-records"><span class="auth-scene-icon"><%- include('icon', { name: 'users' }) %></span><div><p>Farmer records</p><strong>Connected &amp; organized</strong></div><span class="auth-scene-check"><%- include('icon', { name: 'check' }) %></span></div>
+      <div class="auth-scene-resources"><p><span class="auth-scene-icon"><%- include('icon', { name: 'package' }) %></span> Resource distribution</p><div class="auth-chart"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+      <p class="auth-scene-community"><%- include('icon', { name: 'circle-check' }) %> Growing a stronger community</p>
+    </div>
+    <div class="auth-overview-copy">
+      <p class="auth-overview-kicker">Better systems. Stronger communities.</p>
+      <h2><% if (registering) { %>A stronger future<br>starts with our farmers.<% } else { %>Manage agriculture<br>resources with confidence.<% } %></h2>
+      <p class="auth-overview-description"><%= registering ? 'Stay connected to local agriculture services, resource distributions, and important community updates.' : 'Track farmers, resources, distributions, complaints, and notifications in one secure system.' %></p>
+      <p class="auth-built-for"><%- include('icon', { name: 'sprout' }) %> Built for Aringay. Built for our farmers.<%- include('icon', { name: 'chevron-right' }) %></p>
+    </div>
+  </div>
+  <p class="auth-overview-footer">Cultivating progress, together</p>
+</section>

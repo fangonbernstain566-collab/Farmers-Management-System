@@ -1,33 +1,96 @@
 <%- include('partials/head') %>
-<section class="auth-container <%= mode === 'register' ? 'auth-register-card' : 'auth-login-card' %>">
+<% if (mode === 'hectares') { %>
+<section class="auth-container auth-login-card">
   <img src="/assets/logo.png" alt="" class="logo">
   <span class="eyebrow">Aringay Agriculture</span>
-  <h1><%= mode === 'login' ? 'Sign in to your account' : mode === 'register' ? 'Create your farmer account' : 'Set up your farm' %></h1>
-  <p class="auth-intro"><%= mode === 'login' ? 'Welcome back. Access your agriculture management workspace.' : mode === 'register' ? 'Register your personal details to get started.' : 'Enter your farm area so resources can be allocated using your registered hectares.' %></p>
+  <h1>Set up your farm</h1>
+  <p class="auth-intro">Enter your farm area so resources can be allocated using your registered hectares.</p>
   <p class="form-note">Fields marked <span class="required" aria-hidden="true">*</span> are required.</p>
-  <form action="/<%= mode === 'hectares' ? 'setup-hectares' : mode %>" method="post" <% if (mode !== 'login') { %>data-confirm="Save this information?" data-confirm-title="<%= mode === 'register' ? 'Create your account?' : 'Save farm information?' %>" data-confirm-label="<%= mode === 'register' ? 'Create account' : 'Save & continue' %>"<% } %>>
+  <form action="/setup-hectares" method="post" data-confirm="Save this information?" data-confirm-title="Save farm information?" data-confirm-label="Save &amp; continue">
     <%- include('partials/csrf') %>
-    <% if (mode === 'hectares') { %>
     <label>Hectares owned <span class="required" aria-hidden="true">*</span><input type="number" step="0.01" min="0.01" max="99999999.99" name="hectares" required aria-describedby="hectares-help"></label>
     <p class="form-help" id="hectares-help">Use hectares with up to two decimal places.</p>
     <button class="button" type="submit"><%- include('partials/icon', { name: 'sprout' }) %> Save &amp; continue</button>
-    <% } else { %>
-      <% if (mode === 'register') { %>
-      <fieldset class="form-section"><legend>Personal information</legend><div class="form-grid"><%- include('partials/fields', { record: null }) %></div></fieldset>
-      <% } %>
-      <label>Email address <span class="required" aria-hidden="true">*</span><input type="email" name="email" maxlength="100" autocomplete="email" required></label>
-      <div class="password-field">
-        <label for="auth-password">Password <span class="required" aria-hidden="true">*</span></label>
-        <div class="password-input">
-          <input id="auth-password" type="password" name="password" autocomplete="<%= mode === 'register' ? 'new-password' : 'current-password' %>" <% if (mode === 'register') { %>minlength="8" maxlength="72" aria-describedby="password-help"<% } %> required>
-          <button type="button" class="button-icon password-toggle" data-password-toggle aria-controls="auth-password" aria-label="Show password" aria-pressed="false" title="Show password" hidden><%- include('partials/icon', { name: 'eye' }) %></button>
-        </div>
-      </div>
-      <% if (mode === 'register') { %><p class="form-help" id="password-help">Use 8 or more characters with uppercase, lowercase, a number, and a symbol. Maximum 72 bytes.</p><% } %>
-      <button class="button" type="submit"><%- include('partials/icon', { name: mode === 'login' ? 'log-in' : 'plus' }) %> <%= mode === 'login' ? 'Sign in' : 'Create account' %></button>
-    <% } %>
   </form>
-  <% if (mode === 'login') { %><p class="auth-switch">New farmer? <a href="/register">Create an account</a></p><% } else if (mode === 'register') { %><p class="auth-switch">Already registered? <a href="/login">Sign in</a></p><% } %>
   <p class="auth-footer">Municipal Agriculture Office · Aringay, La Union</p>
 </section>
+<% } else {
+  const registering = mode === 'register';
+  const values = typeof formValues === 'undefined' ? {} : formValues;
+  const errors = typeof fieldErrors === 'undefined' ? {} : fieldErrors;
+%>
+<div class="auth-shell auth-shell-<%= mode %>">
+  <section class="auth-form-panel" aria-labelledby="auth-title" <% if (registering) { %>tabindex="0"<% } %>>
+    <header class="auth-brand">
+      <img src="/assets/logo.png" alt="Aringay Agriculture logo" width="48" height="48">
+      <div><strong>Aringay Agriculture</strong><p>Municipal Agriculture Management System</p></div>
+    </header>
+    <div class="auth-form-content <%= registering ? 'auth-registration' : '' %>">
+      <% if (registering) { %><a class="auth-back" href="/login"><%- include('partials/icon', { name: 'arrow-left' }) %> Back to sign in</a><% } %>
+      <p class="auth-kicker"><% if (registering) { %><%- include('partials/icon', { name: 'sprout' }) %> Farmer registration<% } else { %><span class="auth-dot" aria-hidden="true"></span> Rooted in community. Growing together.<% } %></p>
+      <h1 id="auth-title"><%= registering ? 'Grow with us' : 'Welcome back' %><span>.</span></h1>
+      <p class="auth-description"><%= registering ? 'Create your farmer account and connect with the Aringay agriculture community.' : 'Sign in to access your agriculture management account.' %></p>
+      <form action="/<%= mode %>" method="post" class="auth-form">
+        <%- include('partials/csrf') %>
+        <% if (typeof authError !== 'undefined' && authError) { %>
+        <div class="auth-error" role="alert"><%- include('partials/icon', { name: 'circle-alert' }) %><p><%= authError %></p></div>
+        <% } %>
+        <% if (registering) { %>
+        <p class="auth-required-note">All fields are required.</p>
+        <fieldset class="auth-personal"><legend>Personal information</legend>
+          <div class="auth-field-grid">
+            <% const fields = [
+              ['fullname', 'Full Name', 'text', 'name', 100, 'Enter your full name'],
+              ['contact_number', 'Contact Number', 'tel', 'tel', 20, '09XX XXX XXXX'],
+              ['birthdate', 'Date of Birth', 'date', 'bday', 10, ''],
+              ['age', 'Age', 'number', 'off', 3, 'Enter your age'],
+              ['gender', 'Gender', 'select', 'off', 6, ''],
+              ['civil_status', 'Civil Status', 'select', 'off', 9, ''],
+              ['place_of_birth', 'Place of Birth', 'text', 'off', 255, 'Municipality / province'],
+              ['address', 'Barangay / Address', 'text', 'street-address', 255, 'Barangay, street or sitio in Aringay'],
+            ]; for (const [name, label, type, autocomplete, max, placeholder] of fields) { %>
+            <div class="auth-field <%= ['address', 'place_of_birth'].includes(name) ? 'auth-field-wide' : '' %>">
+              <label for="register-<%= name %>"><%= label %></label>
+              <% if (type === 'select') { %>
+              <select id="register-<%= name %>" name="<%= name %>" required aria-invalid="<%= !!errors[name] %>" <% if (errors[name]) { %>aria-describedby="<%= name %>-error"<% } %>>
+                <option value="">Select <%= label.toLowerCase() %></option>
+                <% for (const option of name === 'gender' ? ['Male', 'Female', 'Other'] : ['Single', 'Married', 'Widowed', 'Separated']) { %><option value="<%= option %>" <%= values[name] === option ? 'selected' : '' %>><%= option %></option><% } %>
+              </select>
+              <% } else { %>
+              <input id="register-<%= name %>" name="<%= name %>" type="<%= type %>" autocomplete="<%= autocomplete %>" value="<%= values[name] ?? '' %>" placeholder="<%= placeholder %>" required <% if (type === 'number') { %>min="0" max="130" step="1"<% } else if (type === 'date') { %>max="<%= new Date().toISOString().slice(0, 10) %>"<% } else { %>maxlength="<%= max %>"<% } %> aria-invalid="<%= !!errors[name] %>" <% if (errors[name]) { %>aria-describedby="<%= name %>-error"<% } %>>
+              <% } %>
+              <% if (errors[name]) { %><p class="field-error" id="<%= name %>-error"><%= errors[name] %></p><% } %>
+            </div>
+            <% } %>
+          </div>
+        </fieldset>
+        <% } %>
+        <div class="auth-field">
+          <label for="auth-email">Email Address</label>
+          <div class="auth-input-icon">
+            <%- include('partials/icon', { name: 'mail' }) %>
+            <input id="auth-email" type="email" name="email" maxlength="100" autocomplete="email" placeholder="Enter your email address" value="<%= values.email ?? '' %>" required aria-invalid="<%= !!errors.email %>" <% if (errors.email) { %>aria-describedby="email-error"<% } %>>
+          </div>
+          <% if (errors.email) { %><p class="field-error" id="email-error"><%= errors.email %></p><% } %>
+        </div>
+        <div class="auth-field">
+          <label for="auth-password">Password</label>
+          <div class="auth-input-icon password-input">
+            <%- include('partials/icon', { name: 'lock-keyhole' }) %>
+            <input id="auth-password" type="password" name="password" autocomplete="<%= registering ? 'new-password' : 'current-password' %>" placeholder="<%= registering ? 'Create a password' : 'Enter your password' %>" maxlength="<%= registering ? 72 : 1024 %>" <% if (registering) { %>minlength="8"<% } %> required aria-invalid="<%= !!errors.password %>" <% if (registering || errors.password) { %>aria-describedby="<%= errors.password ? 'password-error' : 'password-help' %>"<% } %>>
+            <button type="button" class="button-icon password-toggle" data-password-toggle aria-controls="auth-password" aria-label="Show password" aria-pressed="false" title="Show password" hidden><%- include('partials/icon', { name: 'eye' }) %></button>
+          </div>
+          <% if (errors.password) { %><p class="field-error" id="password-error"><%= errors.password %></p><% } %>
+          <% if (registering) { %><p class="form-help" id="password-help">Use 8 or more characters with uppercase, lowercase, a number, and a symbol. Maximum 72 bytes.</p><% } %>
+        </div>
+        <button class="auth-submit" type="submit"><%= registering ? 'Register as Farmer' : 'Sign In' %><%- include('partials/icon', { name: 'arrow-right' }) %></button>
+      </form>
+      <p class="auth-account-switch"><%= registering ? 'Already have an account?' : 'Don’t have an account?' %> <a href="/<%= registering ? 'login' : 'register' %>"><%= registering ? 'Sign in' : 'Register as Farmer' %></a></p>
+      <p class="auth-security"><%- include('partials/icon', { name: 'shield-check' }) %><%= registering ? 'Your community. Your resources. One secure account.' : 'Secure access. Better service for our farmers.' %></p>
+    </div>
+    <footer class="auth-panel-footer"><span>&copy; <%= new Date().getFullYear() %> Aringay Agriculture</span><span><%- include('partials/icon', { name: 'map-pin' }) %> Aringay, La Union</span></footer>
+  </section>
+  <%- include('partials/auth-overview', { registering }) %>
+</div>
+<% } %>
 <%- include('partials/foot') %>

@@ -8,10 +8,11 @@
   <title><%= title %> | Aringay Agriculture</title>
   <% const assetRevision = typeof assetVersion === 'function' ? '?v=' + assetVersion() : ''; %>
   <link rel="stylesheet" href="/assets/app.css<%= assetRevision %>">
+  <% if (['/login', '/register'].includes(path)) { %><link rel="stylesheet" href="/assets/css/auth.css<%= assetRevision %>"><% } %>
   <script src="/assets/app.js<%= assetRevision %>" defer></script>
 </head>
 <% const standalone = !user || ['/login', '/register'].includes(path); %>
-<body class="<%= standalone ? 'auth-page' : 'app-page' %>">
+<body class="<%= standalone ? 'auth-page' : 'app-page' %><%= ['/login', '/register'].includes(path) ? ' auth-redesigned' : '' %>">
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="toast-region" role="region" aria-label="Messages">
   <% if (flash) { %>

@@ -9,6 +9,7 @@ import { config } from "./config.js";
 import { PostgresSessionStore } from "./session-store.js";
 import { csrf, hydrate } from "./security.js";
 import { HttpError } from "./errors.js";
+import { authFormPresentation } from "./auth-presentation.js";
 import { auth } from "./routes/auth.js";
 import { pages } from "./routes/pages.js";
 export function createApp(store: session.Store = new PostgresSessionStore()) {
@@ -22,6 +23,7 @@ export function createApp(store: session.Store = new PostgresSessionStore()) {
     Math.max(
       statSync(path.resolve("public/app.js")).mtimeMs,
       statSync(path.resolve("public/app.css")).mtimeMs,
+      statSync(path.resolve("public/css/auth.css")).mtimeMs,
     ).toString();
   app.use(
     helmet({
@@ -110,6 +112,28 @@ export function createApp(store: session.Store = new PostgresSessionStore()) {
   app.use((_req, _res, next) => next(new HttpError(404, "Page not found.")));
   const errors: ErrorRequestHandler = (error, req, res, _next) => {
     if (res.headersSent) return;
+    if (
+      req.method === "POST" &&
+      ["/login", "/register"].includes(req.path) &&
+      (error instanceof ZodError ||
+        (error instanceof HttpError && error.status < 500))
+    ) {
+      const mode = req.path === "/register" ? "register" : "login";
+      return res
+        .status(error instanceof HttpError ? error.status : 400)
+        .render("auth", {
+          title:
+            mode === "register"
+              ? "Farmer Official Registration"
+              : "Account Login",
+          mode,
+          user: res.locals.user ?? null,
+          csrf: res.locals.csrf ?? "",
+          path: req.path,
+          flash: res.locals.flash ?? null,
+          ...authFormPresentation(error, req.body, mode),
+        });
+    }
     let status = 500,
       message = "Unable to complete the request. Please try again.";
     if (error instanceof HttpError) {
