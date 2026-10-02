@@ -9,6 +9,7 @@ The active root application uses PostgreSQL, including Supabase PostgreSQL. For 
 - Adds missing source runtime columns for complaint confirmation, documentation deletion, and linked notifications.
 - Creates `admin_notification_reads` and `email_logs` if absent, matching source db.php.
 - Adds email_logs.processing_at for operational reconciliation.
+- Adds email_logs.next_attempt_at and a partial pending-queue index for delayed retries (`002_email_retry_schedule`). Existing root installations can apply only this additive queue upgrade with `npm run emails:migrate`.
 - Widens resources.total_quantity and distributions.allocated_quantity to NUMERIC(15,4). Existing integer values remain exactly represented; lost fractions in earlier PHP writes cannot be reconstructed.
 - Creates app_sessions (persistent server sessions), app_locks (transaction serialization), and app_migrations (version marker).
 
@@ -30,14 +31,14 @@ The legacy MariaDB-to-PostgreSQL row importer is not production-ready. Do not us
 2. Confirm original row counts, IDs, ownership, status values and quantities match baseline. No migration operation deletes records. Confirm DECIMAL columns have scale 4 and the email/session tables exist.
 3. Import old uploads using `npm run uploads:import -- /old/private/uploads`; original stored path strings remain unchanged. Originals are not altered.
 4. Use a runtime DB account, a unique session secret and the right APP_ORIGIN. Start Node and complete staging acceptance tests for both roles: register/login/hectares, profile/edit/search, add/distribute stock, complaint attachment/edit/confirm, upload owned receipt proof, history, mark read, documentation deletion reason/notice, soft deletion/restore, and trash FK restrictions.
-5. Review pending and processing email rows before enabling one worker. Configure/test SMTP using a test farmer inbox; do not send to copied production emails during staging. Nodemailer template retains source greeting/body/footer, inline logo, and plaintext fallback.
+5. Review pending and processing email rows before enabling the worker. Configure/test SMTP using a controlled farmer inbox; do not send to copied production emails during staging. The branded Nodemailer template includes escaped HTML, a plaintext fallback, and the configured application sign-in link. See [EMAIL_SETUP.md](EMAIL_SETUP.md).
 6. Repeat backed-up migration and upload import for the live database during a write freeze; switch reverse proxy; start TypeScript and its worker schedule. Smoke-test login and permissions; monitor safe event logs and queue status counts. Keep PHP deployment and backups offline for rollback.
 
-No operation in this development session ran against the user's real database or sent real email.
+The email feature's workflow tests use a disposable `_test` PostgreSQL database and controlled send callbacks. The additive email migration is also checked separately; no real mail is sent by tests or migrations. See VALIDATION.md for actual checks.
 
 ## Email reconciliation
 
-The worker is bounded by EMAIL_BATCH_SIZE and EMAIL_MAX_ATTEMPTS. It uses a PostgreSQL advisory lock to prevent overlap, conditionally claims pending entries, and does not create additional notifications during sending/retrying. Provider exceptions store a generic error, not SMTP responses/message content.
+The worker is bounded by EMAIL_BATCH_SIZE and EMAIL_MAX_ATTEMPTS. An atomic `FOR UPDATE SKIP LOCKED` claim changes one due pending row to processing and increments attempts before sending. Concurrent workers claim different rows, including active Farmer and Admin recipients. No transaction stays open during SMTP. Transient failures schedule exponential delays based on EMAIL_RETRY_DELAY_SECONDS, capped at 24 hours; invalid recipients/permanent rejections stop early. Sending/retrying never creates additional notices. Provider exceptions store a generic summary, not SMTP responses/message content.
 
 If a worker crashes after SMTP accepts a message but before the `sent` update commits, its row remains `processing`. Do not automatically reset it. Reconcile using the provider and deterministic `Message-ID` (`aringay-queue-{id}` plus sender domain). With the worker stopped, mark verified deliveries `sent` and set sent_at, or reset verified unsent entries `pending` and clear processing_at. A stable Message-ID aids reconciliation, not deduplication guarantees. Exactly-once SMTP delivery is impossible without provider-level idempotency. Failed entries can be reviewed and reset after correcting configuration; retain attempt accounting deliberately.
 

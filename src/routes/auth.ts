@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
-import { one, run, pool } from "../db.js";
+import { one, run, pool, transaction } from "../db.js";
+import { queueEventEmails } from "../services/email-events.js";
 import type { User } from "../types.js";
 import {
   loginSchema,
@@ -66,22 +67,28 @@ auth.post("/login", limit, async (req, res) => {
 auth.post("/register", limit, async (req, res) => {
   const d = registrationSchema.parse(req.body);
   try {
-    await run(
-      pool,
-      "INSERT INTO users (fullname,email,password,role,birthdate,age,gender,civil_status,address,contact_number,place_of_birth) VALUES (?,?,?,'farmer',?,?,?,?,?,?,?)",
-      [
-        d.fullname,
-        d.email,
-        await hashPassword(d.password),
-        d.birthdate,
-        d.age,
-        d.gender,
-        d.civil_status,
-        d.address,
-        d.contact_number,
-        d.place_of_birth,
-      ],
-    );
+    const password = await hashPassword(d.password);
+    await transaction(async (db) => {
+      const result = await run(
+        db,
+        "INSERT INTO users (fullname,email,password,role,birthdate,age,gender,civil_status,address,contact_number,place_of_birth) VALUES (?,?,?,'farmer',?,?,?,?,?,?,?)",
+        [
+          d.fullname,
+          d.email,
+          password,
+          d.birthdate,
+          d.age,
+          d.gender,
+          d.civil_status,
+          d.address,
+          d.contact_number,
+          d.place_of_birth,
+        ],
+      );
+      if (!result.insertId)
+        throw new Error("Registration did not return an account ID");
+      await queueEventEmails(db, result.insertId, { type: "registration" });
+    });
   } catch (error) {
     if ((error as { code?: string }).code === "23505")
       throw new HttpError(

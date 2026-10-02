@@ -56,13 +56,24 @@ interface Notice {
   is_read: boolean;
   message: string;
 }
+interface QueuedEmail {
+  user_id: number;
+  to_email: string;
+  subject: string;
+  body: string;
+}
+let emails: QueuedEmail[];
 const batchTime = "2026-10-02 08:30:00.123456+00";
 let records: ReceiptRow[], notices: Notice[], uploadDir: string, proof: Buffer;
 let store: session.MemoryStore,
   app: ReturnType<typeof createApp>,
   clientIp = 0;
 let failure: "update" | "notice" | null = null;
-let snapshot: { records: ReceiptRow[]; notices: Notice[] };
+let snapshot: {
+  records: ReceiptRow[];
+  notices: Notice[];
+  emails: QueuedEmail[];
+};
 
 function batch(farmerId: number, distributionId: number): ReceiptRow[] {
   const selected = records.find(
@@ -89,13 +100,14 @@ const result = (rows: unknown[] = []) => ({
 });
 const transactionQuery = vi.fn(async (sql: string, values: Params = []) => {
   if (sql === "BEGIN") {
-    snapshot = structuredClone({ records, notices });
+    snapshot = structuredClone({ records, notices, emails });
     return result();
   }
   if (sql === "COMMIT") return result();
   if (sql === "ROLLBACK") {
     records = snapshot.records;
     notices = snapshot.notices;
+    emails = snapshot.emails;
     return result();
   }
   if (sql.startsWith("SELECT * FROM distributions")) {
@@ -128,6 +140,27 @@ const transactionQuery = vi.fn(async (sql: string, values: Params = []) => {
     return result();
   }
   if (sql.startsWith("DELETE FROM notifications WHERE")) return result();
+  if (sql.startsWith("SELECT fullname FROM users"))
+    return result([{ fullname: "Synthetic Farmer" }]);
+  if (sql.startsWith("SELECT email,role FROM users"))
+    return result([
+      {
+        email:
+          Number(values[0]) === 1 ? adminFixture.email : farmerFixture.email,
+        role: Number(values[0]) === 1 ? "admin" : "farmer",
+      },
+    ]);
+  if (sql.startsWith("SELECT id FROM users WHERE role='admin'"))
+    return result([{ id: 1 }]);
+  if (sql.startsWith("INSERT INTO email_logs")) {
+    emails.push({
+      user_id: Number(values[0]),
+      to_email: String(values[2]),
+      subject: String(values[3]),
+      body: String(values[4]),
+    });
+    return result([{ id: emails.length }]);
+  }
   throw new Error("Unexpected receipt transaction query");
 });
 const release = vi.fn();
@@ -146,6 +179,7 @@ beforeEach(() => {
   transactionQuery.mockClear();
   release.mockClear();
   failure = null;
+  emails = [];
   const receipt = (id: number, farmerId = 7, time = batchTime): ReceiptRow => ({
     id,
     farmer_id: farmerId,
@@ -369,6 +403,39 @@ describe("receipt selection and server-owned timestamps", () => {
 });
 
 describe("owned receipt confirmation and private proof upload", () => {
+  it("serves fresh proof controls and versioned frontend assets for farmer and admin history", async () => {
+    expect((await submit()).response.status).toBe(302);
+    for (const userId of [7, 1]) {
+      const { browser } = await agent(userId);
+      const page = await browser.get("/history");
+      expect(page.status).toBe(200);
+      expect(page.headers["cache-control"]).toBe("private, no-store");
+      expect(page.text).toMatch(/src="\/assets\/app\.js\?v=\d[\d.]*"/);
+      expect(page.text).toContain('class="btn-view-proof ');
+      expect(page.text).toContain('data-proof-url="/images/proof/21"');
+      expect(page.text).not.toMatch(/<a\b[^>]*href="\/images\/proof\//);
+    }
+  });
+  it("serves modal proof URLs to their owner and admin while rejecting anonymous, foreign, missing and deleted proof", async () => {
+    const { browser: owner, response } = await submit();
+    expect(response.status).toBe(302);
+    const { browser: admin } = await agent(1);
+    const image = await admin.get("/images/proof/21");
+    expect(image.status).toBe(200);
+    expect(image.headers["content-type"]).toContain("image/png");
+    expect(image.headers["cache-control"]).toBe("private, no-store");
+    expect(image.body).toEqual((await owner.get("/images/proof/21")).body);
+    const { browser: other } = await agent(8);
+    expect((await other.get("/images/proof/21")).status).toBe(403);
+    const anonymous = await request(app).get("/images/proof/21");
+    expect(anonymous.status).toBe(302);
+    expect(anonymous.headers.location).toBe("/login");
+    expect((await owner.get("/images/proof/999")).status).toBe(404);
+    expect((await owner.get("/images/proof/23")).status).toBe(404);
+    records[0]!.is_deleted = true;
+    expect((await owner.get("/images/proof/21")).status).toBe(404);
+    expect((await admin.get("/images/proof/21")).status).toBe(200);
+  });
   it("confirms only the exact owned batch, stores readable proof, updates history and removes its notice", async () => {
     const { browser, response } = await submit();
     expect(response.status).toBe(302);
@@ -395,6 +462,16 @@ describe("owned receipt confirmation and private proof upload", () => {
     );
     expect(transactionQuery).toHaveBeenCalledWith("COMMIT");
     expect(release).toHaveBeenCalledOnce();
+    expect(emails).toHaveLength(2);
+    expect(emails.find((email) => email.user_id === 7)?.subject).toBe(
+      "Proof of receipt submitted",
+    );
+    expect(emails.find((email) => email.user_id === 1)?.subject).toBe(
+      "Farmer proof of receipt submitted",
+    );
+    expect(
+      emails.every((email) => !email.body.includes(records[0]!.proof_image!)),
+    ).toBe(true);
     const image = await browser.get("/images/proof/21");
     expect(image.status).toBe(200);
     expect(image.headers["cache-control"]).toBe("private, no-store");

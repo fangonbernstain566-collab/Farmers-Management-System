@@ -1,4 +1,5 @@
 import { pool } from "./db.js";
+import { migrateEmailQueue } from "./services/email-migration.js";
 try {
   const client = await pool.connect();
   try {
@@ -89,6 +90,7 @@ try {
     await client.query(
       "INSERT INTO app_migrations (version) VALUES ('001_typescript_compatibility') ON CONFLICT (version) DO NOTHING",
     );
+    await migrateEmailQueue(client);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

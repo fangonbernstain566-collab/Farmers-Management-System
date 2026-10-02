@@ -1,6 +1,30 @@
 # Validation results
 
-Current verification: Windows PowerShell, Node.js 24.21.0, configured Supabase PostgreSQL. No production MariaDB dump was imported.
+## Email feature — October 2, 2026
+
+Verification used Windows PowerShell, the root TypeScript project, mocked Nodemailer, and an isolated local PostgreSQL 18 database named `aringay_email_test`. No destructive tests ran against the configured Supabase database and no real email was sent.
+
+| Check                           | Command or workflow                                                                            | Result                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| TypeScript                      | `npm run typecheck`                                                                            | PASS                                                                      |
+| ESLint                          | `npm run lint`                                                                                 | PASS                                                                      |
+| Full root tests                 | `npm test` with `RUN_DB_TESTS=1`, test-only DATABASE_URL, DB_TLS=false and isolated UPLOAD_DIR | PASS — 139 tests in 5 files; all 18 PostgreSQL integration tests executed |
+| Email unit tests                | `npm test -- tests/email.test.ts`                                                              | PASS — 22 controlled tests; Nodemailer mocked                             |
+| Queue upgrade idempotency       | `npm run emails:migrate` twice against the isolated test DB                                    | PASS — existing rows preserved                                            |
+| Existing root queue upgrade     | `npm run emails:migrate` against configured PostgreSQL                                         | PASS — additive retry column/index/version only; no business data changed |
+| Real SMTP verification/delivery | Not run                                                                                        | NOT RUN — local SMTP credentials incomplete                               |
+
+Tests cover stored recipients, subjects, Farmer/Admin events, invalid/missing addresses, escaped HTML/plain text, TLS configuration, non-sending connection verification, successful simulated delivery, safe failure summaries, backoff, maximum attempts, batch limits, and sent-but-not-recorded reconciliation behavior. The real PostgreSQL tests verify registration, distributions, complaint submission/confirmation, receipt-proof submission, business persistence after simulated SMTP failure, and distinct claims across two overlapping workers. Existing receipt, security, and EJS tests pass as part of the suite. `npm run build` also passed.
+
+The pending proof-modal controls were additionally checked with `node --import tsx scripts/verify-proof-modal.mjs .frontend-temp/browser/package.json` using local Playwright/axe tooling. Synthetic records and files were served locally, without application database access. Five Farmer/Admin pages passed at widths 1440, 768, and 390: 15 responsive interactions, 15 accessibility checks, 15 no-navigation checks, and 3 loading/failure checks. This is an actual browser interaction test of rendered templates; it does not verify production uploads or live sessions.
+
+The first isolated database run exposed PostgreSQL-specific fixture issues: COUNT returns bigint strings, and a legacy fixture inserted an integer into a boolean column. Test SQL now explicitly casts counts and uses boolean values. Runtime business rules were not changed to accommodate tests.
+
+Email queue and SMTP delivery logic were implemented and verified with mocked/controlled tests. Actual email delivery still requires valid SMTP configuration. See [EMAIL_SETUP.md](EMAIL_SETUP.md) for setup, scheduling, a controlled inbox test, and queue monitoring.
+
+## Earlier verification record
+
+Earlier verification: Windows PowerShell, Node.js 24.21.0, configured Supabase PostgreSQL. No production MariaDB dump was imported. The following records predate the October 2 email work above.
 
 | Check                           | Exact command or workflow                                                      | Result                                                                       |
 | ------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
@@ -29,7 +53,7 @@ These previews verify template appearance for the listed layouts. They do not ve
 
 ## Coverage
 
-The 16 database integration tests cover registration, authentication, role/ownership checks, complaints, allocations, receipts, notification reads, trash, email retries, deletion safety, and session lifecycle. They require a disposable PostgreSQL database; they were not executed in this session.
+The original 16 database integration tests cover registration, authentication, role/ownership checks, complaints, allocations, receipts, notification reads, trash, email retries, deletion safety, and session lifecycle. They were initially skipped. The October 2 suite contains 18 database tests including concurrent mail workers and invalid recipients; all were executed against the disposable `_test` database as recorded above.
 
 Unit/security tests cover password compatibility/rejection, unauthenticated access, CSRF, origin protection, inert legacy GET mutations, role/ownership policy, invalid fields/dates/precision, decoded image validation, oversize uploads, path traversal, fixed-point proportional rounding, zero-hectare handling, escaped mail templates, header sanitation and retry limits.
 

@@ -7,6 +7,7 @@ import { hashPassword } from "../src/password.js";
 import type { User } from "../src/types.js";
 import { distributeAll } from "../src/services/allocations.js";
 import { processEmailQueue } from "../src/services/mail.js";
+import { queueEmail } from "../src/services/email-queue.js";
 import { config } from "../src/config.js";
 const enabled = process.env.RUN_DB_TESTS === "1";
 const suite = enabled ? describe : describe.skip;
@@ -76,6 +77,19 @@ suite("isolated PostgreSQL workflow integration", () => {
     farmerId = (await one<User>(pool, "SELECT * FROM users WHERE email=?", [
       profile.email,
     ]))!.id;
+    const welcome = (await one<{ to_email: string; body: string }>(
+      pool,
+      "SELECT to_email,body FROM email_logs WHERE user_id=? AND subject='Welcome to Aringay Agriculture'",
+      [farmerId],
+    ))!;
+    expect(welcome.to_email).toBe(profile.email);
+    expect(welcome.body).not.toContain(profile.password);
+    expect(
+      (await one<{ to_email: string }>(
+        pool,
+        "SELECT to_email FROM email_logs WHERE subject='New farmer registration'",
+      ))!.to_email,
+    ).toBe("admin@example.test");
     const duplicate = await farmer
       .post("/register")
       .type("form")
@@ -180,6 +194,19 @@ suite("isolated PostgreSQL workflow integration", () => {
       "SELECT id FROM complaints WHERE farmer_id=?",
       [farmerId],
     ))!.id;
+    const acknowledgement = (await one<{ to_email: string; body: string }>(
+      pool,
+      "SELECT to_email,body FROM email_logs WHERE user_id=? AND subject='Complaint submission received'",
+      [farmerId],
+    ))!;
+    expect(acknowledgement.to_email).toBe(profile.email);
+    expect(acknowledgement.body).toContain("Water shortage");
+    expect(
+      (await one<{ n: number }>(
+        pool,
+        "SELECT COUNT(*)::int n FROM email_logs WHERE subject='New farmer complaint'",
+      ))!.n,
+    ).toBe(1);
     expect((await farmer.get("/images/complaint/" + complaintId)).status).toBe(
       200,
     );
@@ -213,7 +240,7 @@ suite("isolated PostgreSQL workflow integration", () => {
     ).toBe(302);
     const count = await one<{ n: number }>(
       pool,
-      "SELECT COUNT(*) n FROM notifications WHERE farmer_id=?",
+      "SELECT COUNT(*)::int n FROM notifications WHERE farmer_id=?",
       [farmerId],
     );
     await admin
@@ -223,7 +250,7 @@ suite("isolated PostgreSQL workflow integration", () => {
     expect(
       (await one<{ n: number }>(
         pool,
-        "SELECT COUNT(*) n FROM notifications WHERE farmer_id=?",
+        "SELECT COUNT(*)::int n FROM notifications WHERE farmer_id=?",
         [farmerId],
       ))!.n,
     ).toBe(count!.n);
@@ -238,7 +265,7 @@ suite("isolated PostgreSQL workflow integration", () => {
   it("rejects invalid multipart tokens and uploads without DB side effects", async () => {
     const before = (await one<{ n: number }>(
       pool,
-      "SELECT COUNT(*) n FROM complaints",
+      "SELECT COUNT(*)::int n FROM complaints",
     ))!.n;
     expect(
       (
@@ -261,7 +288,10 @@ suite("isolated PostgreSQL workflow integration", () => {
       ).status,
     ).toBe(400);
     expect(
-      (await one<{ n: number }>(pool, "SELECT COUNT(*) n FROM complaints"))!.n,
+      (await one<{ n: number }>(
+        pool,
+        "SELECT COUNT(*)::int n FROM complaints",
+      ))!.n,
     ).toBe(before);
   });
   it("distributes resources atomically, confirms owned receipt, removes notice, serves proof", async () => {
@@ -290,6 +320,14 @@ suite("isolated PostgreSQL workflow integration", () => {
     }>(pool, "SELECT * FROM distributions WHERE farmer_id=?", [farmerId]))!;
     distId = d.id;
     expect(Number(d.allocated_quantity)).toBe(100.5);
+    const allocationMail = (await one<{ to_email: string; body: string }>(
+      pool,
+      "SELECT to_email,body FROM email_logs WHERE user_id=? AND subject='Resource distribution notification'",
+      [farmerId],
+    ))!;
+    expect(allocationMail.to_email).toBe(profile.email);
+    expect(allocationMail.body).toContain("100.5000 kg of Rice");
+    expect(allocationMail.body).toContain("Distribution date:");
     expect((await other.get("/receipts/" + distId)).status).toBe(403);
     expect(
       (
@@ -314,7 +352,7 @@ suite("isolated PostgreSQL workflow integration", () => {
     expect(
       (await one<{ n: number }>(
         pool,
-        "SELECT COUNT(*) n FROM notifications WHERE distribution_id=?",
+        "SELECT COUNT(*)::int n FROM notifications WHERE distribution_id=?",
         [distId],
       ))!.n,
     ).toBe(0);
@@ -327,6 +365,19 @@ suite("isolated PostgreSQL workflow integration", () => {
           .attach("proof", proof, "proof.png")
       ).status,
     ).toBe(409);
+    expect(
+      (await one<{ n: number }>(
+        pool,
+        "SELECT COUNT(*)::int n FROM email_logs WHERE user_id=? AND subject='Proof of receipt submitted'",
+        [farmerId],
+      ))!.n,
+    ).toBe(1);
+    expect(
+      (await one<{ n: number }>(
+        pool,
+        "SELECT COUNT(*)::int n FROM email_logs WHERE subject='Farmer proof of receipt submitted'",
+      ))!.n,
+    ).toBe(1);
   });
   it("renders every major authenticated page with live data", async () => {
     for (const url of [
@@ -442,12 +493,26 @@ suite("isolated PostgreSQL workflow integration", () => {
   it("retries failed queued mail; claims each queued entry once without duplicating notifications", async () => {
     const before = (await one<{ n: number }>(
       pool,
-      "SELECT COUNT(*) n FROM notifications",
+      "SELECT COUNT(*)::int n FROM notifications",
     ))!.n;
     const failed = await processEmailQueue(async () => {
       throw new Error("mock provider failure");
     });
     expect(failed.failed).toBeGreaterThan(0);
+    expect(
+      (await one<{ status: string }>(
+        pool,
+        "SELECT status FROM distributions WHERE id=?",
+        [distId],
+      ))!.status,
+    ).toBe("received");
+    expect(
+      (await one<{ status: string }>(
+        pool,
+        "SELECT status FROM complaints WHERE id=?",
+        [complaintId],
+      ))!.status,
+    ).toBe("confirmed");
     const retry = await rows<{ attempts: number; status: string }>(
       pool,
       "SELECT attempts,status FROM email_logs",
@@ -455,7 +520,17 @@ suite("isolated PostgreSQL workflow integration", () => {
     expect(retry.every((e) => e.attempts === 1 && e.status === "pending")).toBe(
       true,
     );
+    expect(
+      await processEmailQueue(async () => {
+        throw new Error("retry must wait for its deadline");
+      }),
+    ).toEqual({ sent: 0, failed: 0 });
     const delivered: number[] = [];
+    // Advance only test queue deadlines; no wall-clock sleep or real SMTP.
+    await run(
+      pool,
+      "UPDATE email_logs SET next_attempt_at=NOW()-INTERVAL '1 second' WHERE status='pending'",
+    );
     const sent = await processEmailQueue(async (row) => {
       delivered.push(row.id);
     });
@@ -469,8 +544,70 @@ suite("isolated PostgreSQL workflow integration", () => {
       ).sent,
     ).toBe(0);
     expect(
-      (await one<{ n: number }>(pool, "SELECT COUNT(*) n FROM notifications"))!
-        .n,
+      (await one<{ n: number }>(
+        pool,
+        "SELECT COUNT(*)::int n FROM notifications",
+      ))!.n,
+    ).toBe(before);
+  });
+  it("claims distinct rows across overlapping PostgreSQL workers", async () => {
+    for (let index = 0; index < 2; index++)
+      await queueEmail(
+        pool,
+        farmerId,
+        "Concurrent worker test",
+        "Controlled delivery.",
+      );
+    const delivered: number[] = [];
+    let release!: () => void;
+    const bothClaimed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const send = async (row: { id: number }) => {
+      delivered.push(row.id);
+      if (delivered.length === 2) release();
+      await bothClaimed;
+    };
+    const result = await Promise.all([
+      processEmailQueue(send),
+      processEmailQueue(send),
+    ]);
+    expect(result.reduce((total, item) => total + item.sent, 0)).toBe(2);
+    expect(delivered).toHaveLength(2);
+    expect(new Set(delivered).size).toBe(2);
+    expect(
+      (await one<{ n: number }>(
+        pool,
+        "SELECT COUNT(*)::int n FROM email_logs WHERE subject='Concurrent worker test' AND status='sent' AND attempts=1",
+      ))!.n,
+    ).toBe(2);
+  });
+  it("skips a missing or invalid stored recipient without queueing SMTP requests", async () => {
+    const before = (await one<{ n: number }>(
+      pool,
+      "SELECT COUNT(*)::int n FROM email_logs",
+    ))!.n;
+    expect(await queueEmail(pool, 2147483647, "Missing user", "Test")).toBe(
+      false,
+    );
+    await run(pool, "UPDATE users SET email='invalid-address' WHERE id=?", [
+      farmerId,
+    ]);
+    try {
+      expect(await queueEmail(pool, farmerId, "Invalid address", "Test")).toBe(
+        false,
+      );
+    } finally {
+      await run(pool, "UPDATE users SET email=? WHERE id=?", [
+        profile.email,
+        farmerId,
+      ]);
+    }
+    expect(
+      (await one<{ n: number }>(
+        pool,
+        "SELECT COUNT(*)::int n FROM email_logs",
+      ))!.n,
     ).toBe(before);
   });
   it("invalidates farmer sessions after soft deletion and supports restore", async () => {
@@ -495,7 +632,7 @@ suite("isolated PostgreSQL workflow integration", () => {
   it("rolls back database failures and rejects permanent deletion of active records", async () => {
     const before = (await one<{ n: number }>(
       pool,
-      "SELECT COUNT(*) n FROM resources",
+      "SELECT COUNT(*)::int n FROM resources",
     ))!.n;
     await expect(
       transaction(async (db) => {
@@ -507,7 +644,8 @@ suite("isolated PostgreSQL workflow integration", () => {
       }),
     ).rejects.toThrow("Simulated");
     expect(
-      (await one<{ n: number }>(pool, "SELECT COUNT(*) n FROM resources"))!.n,
+      (await one<{ n: number }>(pool, "SELECT COUNT(*)::int n FROM resources"))!
+        .n,
     ).toBe(before);
     expect(
       (
@@ -531,7 +669,7 @@ suite("isolated PostgreSQL workflow integration", () => {
     expect(counts.sort()).toEqual([0, 1]);
     const sum = await one<{ qty: string; n: number }>(
       pool,
-      "SELECT SUM(allocated_quantity) qty,COUNT(*) n FROM distributions WHERE resource_id=?",
+      "SELECT SUM(allocated_quantity) qty,COUNT(*)::int n FROM distributions WHERE resource_id=?",
       [resource.insertId],
     );
     expect(Number(sum!.qty)).toBe(10);
@@ -605,7 +743,7 @@ suite("isolated PostgreSQL workflow integration", () => {
     ).toBeUndefined();
     const resource = await run(
       pool,
-      "INSERT INTO resources(name,total_quantity,unit,is_deleted) VALUES ('Deleted resource',1,'kg',1)",
+      "INSERT INTO resources(name,total_quantity,unit,is_deleted) VALUES ('Deleted resource',1,'kg',true)",
     );
     expect(
       (

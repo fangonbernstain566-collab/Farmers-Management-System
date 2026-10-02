@@ -3,6 +3,7 @@ import type { Complaint } from "../types.js";
 import { ownership } from "../security.js";
 import { requireRecord, HttpError } from "../errors.js";
 import { queueNotification } from "./notifications.js";
+import { queueEventEmails } from "./email-events.js";
 export async function complaints(user: {
   id: number;
   role: string;
@@ -37,12 +38,18 @@ export async function createComplaint(
 ): Promise<number> {
   if (user.role !== "farmer")
     throw new HttpError(403, "Only farmer accounts can submit complaints.");
-  const result = await run(
-    pool,
-    "INSERT INTO complaints (farmer_id,subject,message,image_path) VALUES (?,?,?,?) RETURNING id",
-    [user.id, subject, message, image],
-  );
-  return Number(result.insertId ?? 0);
+  return transaction(async (db) => {
+    const result = await run(
+      db,
+      "INSERT INTO complaints (farmer_id,subject,message,image_path) VALUES (?,?,?,?) RETURNING id",
+      [user.id, subject, message, image],
+    );
+    await queueEventEmails(db, user.id, {
+      type: "complaint-submitted",
+      subject,
+    });
+    return Number(result.insertId ?? 0);
+  });
 }
 export async function editComplaint(
   user: { id: number; role: string },

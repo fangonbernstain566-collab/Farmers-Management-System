@@ -2,6 +2,8 @@ import { rows, one, run, pool, transaction } from "../db.js";
 import type { User, Resource, Distribution } from "../types.js";
 import { HttpError, requireRecord } from "../errors.js";
 import { queueNotification } from "./notifications.js";
+import { queueEventEmails } from "./email-events.js";
+import { emailDate } from "./email-content.js";
 // Fixed-point integer arithmetic avoids over-allocation from floating-point rounding.
 export function allocate(
   stock: string,
@@ -100,6 +102,9 @@ export async function distributeAll(): Promise<number> {
           ".",
         notice.first,
         "Resource distribution notification",
+        "A resource distribution has been recorded for your farm.\n\n" +
+          notice.items.join("\n") +
+          `\n\nDistribution date: ${emailDate(clock.time)}\nSign in and open Notifications & Receipts to review your allocation. Confirm receipt and upload proof only after receiving your resources.`,
       );
     return resources.length;
   });
@@ -191,5 +196,6 @@ export async function confirmReceipt(
       "DELETE FROM notifications WHERE farmer_id=? AND distribution_id IS NULL AND message LIKE 'The admin has distributed%' AND created_at=(SELECT created_at FROM distributions WHERE id=? AND farmer_id=?)",
       [farmerId, distributionId, farmerId],
     );
+    await queueEventEmails(db, farmerId, { type: "proof-submitted" });
   });
 }

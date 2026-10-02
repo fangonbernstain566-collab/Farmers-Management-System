@@ -28,7 +28,11 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default("./storage/uploads"),
   TRUST_PROXY: z.coerce.number().int().min(0).max(1).default(0),
   SMTP_HOST: z.string().default("smtp.gmail.com"),
-  SMTP_PORT: z.coerce.number().int().default(587),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_SECURE: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .optional(),
   SMTP_ENCRYPTION: z.enum(["tls", "ssl"]).default("tls"),
   SMTP_USER: z.string().default(""),
   SMTP_PASSWORD: z.string().default(""),
@@ -37,6 +41,12 @@ const schema = z.object({
   SMTP_TIMEOUT_MS: z.coerce.number().int().min(3000).default(10000),
   EMAIL_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(3),
   EMAIL_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(25),
+  EMAIL_RETRY_DELAY_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(60)
+    .max(86400)
+    .default(300),
 });
 const result = schema.safeParse(process.env);
 if (!result.success)

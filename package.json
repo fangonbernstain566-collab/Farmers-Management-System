@@ -17,6 +17,8 @@
     "db:verify": "node --import tsx src/verify-db.ts",
     "admin:create": "node --import tsx src/create-admin.ts",
     "emails:send": "node --import tsx src/email-worker.ts",
+    "emails:verify": "node --import tsx src/email-verify.ts",
+    "emails:migrate": "node --import tsx src/migrate-email.ts",
     "uploads:import": "node --import tsx src/import-uploads.ts",
     "format": "prettier --write src tests *.json *.ts *.js docs/*.md README.md public/app.js public/app.css",
     "format:check": "prettier --check src tests *.json *.ts *.js docs/*.md README.md public/app.js public/app.css"

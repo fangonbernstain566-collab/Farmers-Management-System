@@ -49,6 +49,8 @@ Open `http://localhost:3000`.
 
 ## Security and backups
 
+For email delivery on an existing root installation, apply `npm run emails:migrate` with a schema administrator, then follow [EMAIL_SETUP.md](EMAIL_SETUP.md). This adds the retry deadline/index to the existing queue without changing business records. The worker uses short atomic PostgreSQL row claims and does not depend on session advisory locks, including through Supabase poolers. Use a restricted account for normal worker access and keep SMTP credentials server-side.
+
 - Keep database credentials server-side in `.env`; never put them in browser code.
 - Use a least-privilege PostgreSQL role for runtime access. Use a schema administrator only for migrations.
 - Keep uploads private and outside any public web root.

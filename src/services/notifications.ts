@@ -1,17 +1,16 @@
-import { z } from "zod";
 import { one, rows, run, pool, type DB } from "../db.js";
 import type { Notification, Activity } from "../types.js";
 import { HttpError } from "../errors.js";
+import { queueEmail } from "./email-queue.js";
+export { cleanHeader } from "./email-content.js";
 export const activitySql = `SELECT CONCAT('distribution:',d.id) activity_key,'Distribution receipt' activity_type,CONCAT(u.fullname,' confirmed receipt of ',d.allocated_quantity,' ',r.unit,' of ',r.name,'.') detail,d.received_at activity_time FROM distributions d JOIN users u ON d.farmer_id=u.id JOIN resources r ON d.resource_id=r.id WHERE d.status='received' AND d.received_at IS NOT NULL AND d.is_deleted=false AND u.is_deleted=false AND r.is_deleted=false UNION ALL SELECT CONCAT('complaint:',c.id),'Complaint',CONCAT(u.fullname,' submitted a complaint: ',c.subject),c.created_at FROM complaints c JOIN users u ON c.farmer_id=u.id WHERE c.is_deleted=false AND u.is_deleted=false`;
-export function cleanHeader(value: string): string {
-  return value.replace(/[\r\n]/g, "").trim();
-}
 export async function queueNotification(
   db: DB,
   farmerId: number,
   message: string,
   distributionId: number | null = null,
   subject = "Aringay Agriculture Notification",
+  emailBody = message,
 ): Promise<number> {
   const farmer = await one<{ email: string }>(
     db,
@@ -26,12 +25,7 @@ export async function queueNotification(
     [farmerId, distributionId, message],
   );
   const id = Number(notice.insertId ?? 0);
-  if (z.email().safeParse(farmer.email).success)
-    await run(
-      db,
-      "INSERT INTO email_logs (user_id,notification_id,to_email,subject,body,status) VALUES (?,?,?,?,?, 'pending')",
-      [farmerId, id, farmer.email, cleanHeader(subject), message],
-    );
+  await queueEmail(db, farmerId, subject, emailBody, id);
   return id;
 }
 export async function getNotifications(user: {

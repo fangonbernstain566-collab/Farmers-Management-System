@@ -61,13 +61,15 @@ This command inserts an admin with bcrypt; duplicate emails fail safely. If you 
 
 ## SMTP setup and email worker
 
-Set SMTP_HOST, SMTP_PORT, SMTP_ENCRYPTION (`tls` for STARTTLS, `ssl` for implicit TLS), SMTP_USER, SMTP_PASSWORD, SMTP_FROM_ADDRESS, SMTP_FROM_NAME, timeout/retry/batch settings in `.env`. Set a valid sender authorized by your provider; use an app password when your provider requires one. Real SMTP values from the PHP ZIP are deliberately excluded.
+Follow [the email setup guide](docs/EMAIL_SETUP.md) for SMTP configuration, a controlled inbox test, and scheduling. Set the SMTP environment variables in your private root `.env`; use a sender authorized by your provider.
 
 ```powershell
+npm run emails:migrate
+npm run emails:verify
 npm run emails:send
 ```
 
-Queue creation is part of resource distribution, complaint confirmation and documentation deletion. The UI succeeds after a queue transaction commits; it does not pretend a message was delivered. SMTP failures increment attempts, returning to pending until the configured attempt limit, then failed. Overlapping workers are prevented by a PostgreSQL advisory lock. A processing record left after a crash must be reconciled before retrying; see docs/MIGRATION.md. SMTP cannot guarantee exactly-once delivery.
+The migration upgrades the existing queue; verification checks SMTP connectivity without sending mail. Registration, distribution, proof submission, complaint submission/confirmation, and documentation updates create queued emails. Active Admins receive registration, complaint-submission, and proof-submission notices. Business transactions commit before the separate worker contacts SMTP. Transient failures retry with exponential backoff up to the configured attempt limit. PostgreSQL atomically claims distinct rows across workers. A processing record left after a crash requires reconciliation; see docs/EMAIL_SETUP.md. SMTP cannot guarantee exactly-once delivery.
 
 Schedule the command using Windows Task Scheduler or cron on your server. Run from the project directory, with the same `.env`. Task Scheduler: program `npm.cmd`, arguments `run emails:send`, start-in the project folder. This package creates no external schedule automatically.
 

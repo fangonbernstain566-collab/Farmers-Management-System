@@ -11,8 +11,8 @@
 7. Image content is decoded and re-encoded, with size/pixel/type validation and private storage. Original visuals are retained but embedded metadata is stripped; animated images are rejected. Profiles, complaints and proof images are accessible only to the owner/admin. Legacy references remain readable after upload import.
 8. Permanent trash deletion requires a soft-deleted target and protects administrator accounts. Farmer complaints must be explicitly purged first due to the original FK. Related distributions and linked notices/admin read keys are removed with the target. Shared proof/old profile files are retained privately for rollback, rather than automatically deleting possibly shared files. See retention instructions.
 9. Schema changes are explicit migration operations; runtime no longer has schema-admin privileges or runs ALTER statements per request. Safe errors replace source DB/SMTP exception disclosure.
-10. Email retry counting increments once per actual send attempt. Worker overlap is prevented with a PostgreSQL advisory lock. Ambiguous crash-after-send rows remain processing for manual reconciliation; stable Message-ID aids investigation without promising exactly-once mail.
-11. Original green/slate theme, CSS, page-specific styles and logo are included. Page markup is rebuilt as escaped EJS. Browser native confirmation dialogs replace the custom source modal; image links open an authorized view in a new tab. Charts use accessible native meters rather than a remote Chart.js dependency. Receipt export retains the source html2canvas PNG behavior with a locally bundled dependency and adds browser print-to-PDF. Minor layout and responsive behavior differ; business inputs/actions remain available.
+10. Email attempt counting increments once per claimed delivery. Atomic PostgreSQL `SKIP LOCKED` claims let concurrent workers process distinct rows. Transient errors retry with exponential backoff; attempts are bounded. Ambiguous crash-after-send rows remain processing for manual reconciliation; stable Message-ID aids investigation without promising exactly-once mail.
+11. Original green/slate theme, CSS, page-specific styles and logo are included. Page markup is rebuilt as escaped EJS. Uploaded receipt proof now opens in one reusable modal per Farmer/Admin page through the existing authorized image route; complaint attachments retain their existing link behavior. Login/registration password inputs have accessible visibility controls. Charts use accessible native meters rather than a remote Chart.js dependency. Receipt export retains the source html2canvas PNG behavior with a locally bundled dependency and adds browser print-to-PDF. Minor layout and responsive behavior differ; business inputs/actions remain available.
 12. Source does not contain farmer self-edit/profile-change requests, account approval/rejection, complaint rejection, inventory restock/edit, password-reset, or admin creation UI. Inert pending profile columns remain untouched. These are not claimed as existing migrated functionality. Admin bootstrap is a protected local CLI command.
 
 ## Remaining limits / acceptance work
@@ -30,7 +30,7 @@
 
 ## File inventory
 
-All delivered files are additions under a separate management-typescript directory. No original PHP, SQL dump, uploads, notes, vendor code, source ZIP or pasted instruction file was edited.
+The active implementation is the root TypeScript/PostgreSQL project. The nested `management-typescript/` MySQL/MariaDB project is outside this change's scope. No original PHP, SQL dump, uploads, vendor code, or source ZIP was edited for the email feature.
 
 Added:
 
@@ -46,3 +46,12 @@ Added:
 - docs/AUDIT.md, MIGRATION.md, CHANGES.md, VALIDATION.md, FILES.txt.
 
 Excluded from deliverable: node_modules, compiled dist, `.env`, uploaded photos/proof/complaint images, original credentials/demo notes/account rows, database runtime/test files, development screenshots, caches/logs. These remain local development inputs or are reproducible with the documented commands.
+
+## Email feature — October 2, 2026
+
+- Extended existing `email_logs` and Nodemailer; no duplicate queue, mail library, or PHP dependency.
+- Added Farmer acknowledgements and active Admin alerts for registration, complaint submission, and receipt-proof submission. Retained Farmer distribution, complaint-confirmation, and documentation-update messages. Distribution emails now include actual quantities, units, date, and next steps.
+- Added shared queue validation, escaped branded HTML/plain text, and reusable SMTP transport with required TLS, safe summaries, and no private attachments.
+- Added the transactional, idempotent `002_email_retry_schedule` migration, plus `emails:migrate` and non-sending `emails:verify` commands. New databases include this queue schema.
+- Added controlled transport/event/retry tests and live isolated PostgreSQL workflow/concurrency tests. Corrected old PostgreSQL test fixtures (typed counts and boolean values) without changing runtime business behavior.
+- Added [EMAIL_SETUP.md](EMAIL_SETUP.md) with credentials setup, migration, verification, scheduling, monitoring, and reconciliation instructions. No real SMTP delivery was performed.

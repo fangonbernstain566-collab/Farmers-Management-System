@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS email_logs (
   error_message TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   sent_at TIMESTAMPTZ,
-  processing_at TIMESTAMPTZ
+  processing_at TIMESTAMPTZ,
+  next_attempt_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS app_sessions (
@@ -114,10 +115,13 @@ CREATE INDEX IF NOT EXISTS idx_distributions_resource_id ON distributions(resour
 CREATE INDEX IF NOT EXISTS idx_complaints_farmer_id ON complaints(farmer_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_farmer_id ON notifications(farmer_id);
 CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status, attempts, created_at);
+CREATE INDEX IF NOT EXISTS idx_email_logs_pending_due ON email_logs(next_attempt_at,created_at,id) WHERE status='pending';
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON app_sessions(expires_at);
 
 INSERT INTO app_locks (id) VALUES (1)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO app_migrations (version) VALUES ('001_typescript_compatibility')
+ON CONFLICT (version) DO NOTHING;
+INSERT INTO app_migrations (version) VALUES ('002_email_retry_schedule')
 ON CONFLICT (version) DO NOTHING;

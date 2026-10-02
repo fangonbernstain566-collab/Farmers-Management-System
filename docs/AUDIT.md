@@ -54,7 +54,9 @@ Soft deletion preserves all records. Restoration does not replenish stock, recal
 
 ## Email and uploads
 
-Queue triggers: resource allocation (one summary per farmer), complaint confirmation, documentation deletion. Farmer complaints and proof confirmation appear in the admin activity union, without email to admins. Mail retries do not create new notices. `pending` → `processing` → `sent`, or `pending`/`failed` on provider error. New worker prevents overlap, fixes the source retry-count edge case and retains ambiguous processing entries for manual reconciliation after a crash.
+The legacy behavior recorded in this audit queued resource allocation (one summary per farmer), complaint confirmation, and documentation deletion. The root TypeScript email feature now also queues Farmer acknowledgements and active Admin alerts for registration, complaint submission, and receipt-proof submission. Existing Admin activity and in-app notices remain separate. Mail retries do not create new notices. `pending` → `processing` → `sent`, or delayed `pending`/terminal `failed` on provider error. Atomic PostgreSQL row claims prevent concurrent sends of the same queue row; ambiguous processing entries remain for manual reconciliation after a crash.
+
+During the October 2, 2026 email work, no PHP/Composer implementation or source archive was available in the workspace. The legacy mappings in this audit were used as the available reference; no PHP code was copied. The active root architecture is `pg`, PostgreSQL-backed sessions, TypeScript services, and Nodemailer; historical MySQL descriptions below refer to the earlier migration architecture.
 
 JPG/PNG/WEBP accepted, 5 MB; source profile photo lacks a size limit. New image decoder enforces size/pixel limits, rejects animation and invalid content, strips metadata/payload through re-encoding, generates storage names. Paths and files remain private. Source profile/proof filenames have no uploads/ prefix; complaint paths contain uploads/complaints/; both conventions remain readable after copying uploads.
 
