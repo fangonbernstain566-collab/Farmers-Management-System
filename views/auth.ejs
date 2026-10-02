@@ -1,5 +1,27 @@
-<%- include('partials/head') %><div class="auth-container <%= mode==='register'?'auth-register-card':'auth-login-card' %>"><img src="/assets/logo.png" alt="Farm Logo" class="logo"><h2><%= title %></h2>
-<form action="/<%= mode==='hectares'?'setup-hectares':mode %>" method="post" <% if(mode!=='login'){ %>data-confirm="Save this information?"<% } %>><%- include('partials/csrf') %>
-<% if(mode==='hectares'){ %><p>Please enter the total hectares you own to calculate resource allocation.</p><label>Hectares Owned<input type="number" step="0.01" min="0.01" max="99999999.99" name="hectares" required></label><button>Save &amp; Continue</button>
-<% }else{ %><% if(mode==='register'){ %><div class="form-grid"><%- include('partials/fields',{record:null}) %></div><% } %><label>Email Address<input type="email" name="email" maxlength="100" autocomplete="email" required></label><label>Password<input type="password" name="password" autocomplete="<%= mode==='register'?'new-password':'current-password' %>" required></label><% if(mode==='register'){ %><p class="muted">Use 8 or more characters with uppercase, lowercase, a number, and a symbol. Maximum 72 bytes.</p><% } %><button><%= mode==='login'?'Sign In':'Register Account' %></button><% } %></form>
-<% if(mode==='login'){ %><p>New Farmer? <a href="/register">Register Account</a></p><% }else if(mode==='register'){ %><p>Already have an account? <a href="/login">Login</a></p><% } %></div><%- include('partials/foot') %>
+<%- include('partials/head') %>
+<section class="auth-container <%= mode === 'register' ? 'auth-register-card' : 'auth-login-card' %>">
+  <img src="/assets/logo.png" alt="" class="logo">
+  <span class="eyebrow">Aringay Agriculture</span>
+  <h1><%= mode === 'login' ? 'Sign in to your account' : mode === 'register' ? 'Create your farmer account' : 'Set up your farm' %></h1>
+  <p class="auth-intro"><%= mode === 'login' ? 'Welcome back. Access your agriculture management workspace.' : mode === 'register' ? 'Register your personal details to get started.' : 'Enter your farm area so resources can be allocated using your registered hectares.' %></p>
+  <p class="form-note">Fields marked <span class="required" aria-hidden="true">*</span> are required.</p>
+  <form action="/<%= mode === 'hectares' ? 'setup-hectares' : mode %>" method="post" <% if (mode !== 'login') { %>data-confirm="Save this information?" data-confirm-title="<%= mode === 'register' ? 'Create your account?' : 'Save farm information?' %>" data-confirm-label="<%= mode === 'register' ? 'Create account' : 'Save & continue' %>"<% } %>>
+    <%- include('partials/csrf') %>
+    <% if (mode === 'hectares') { %>
+    <label>Hectares owned <span class="required" aria-hidden="true">*</span><input type="number" step="0.01" min="0.01" max="99999999.99" name="hectares" required aria-describedby="hectares-help"></label>
+    <p class="form-help" id="hectares-help">Use hectares with up to two decimal places.</p>
+    <button class="button" type="submit"><%- include('partials/icon', { name: 'sprout' }) %> Save &amp; continue</button>
+    <% } else { %>
+      <% if (mode === 'register') { %>
+      <fieldset class="form-section"><legend>Personal information</legend><div class="form-grid"><%- include('partials/fields', { record: null }) %></div></fieldset>
+      <% } %>
+      <label>Email address <span class="required" aria-hidden="true">*</span><input type="email" name="email" maxlength="100" autocomplete="email" required></label>
+      <label>Password <span class="required" aria-hidden="true">*</span><input type="password" name="password" autocomplete="<%= mode === 'register' ? 'new-password' : 'current-password' %>" <% if (mode === 'register') { %>minlength="8" maxlength="72" aria-describedby="password-help"<% } %> required></label>
+      <% if (mode === 'register') { %><p class="form-help" id="password-help">Use 8 or more characters with uppercase, lowercase, a number, and a symbol. Maximum 72 bytes.</p><% } %>
+      <button class="button" type="submit"><%- include('partials/icon', { name: mode === 'login' ? 'log-in' : 'plus' }) %> <%= mode === 'login' ? 'Sign in' : 'Create account' %></button>
+    <% } %>
+  </form>
+  <% if (mode === 'login') { %><p class="auth-switch">New farmer? <a href="/register">Create an account</a></p><% } else if (mode === 'register') { %><p class="auth-switch">Already registered? <a href="/login">Sign in</a></p><% } %>
+  <p class="auth-footer">Municipal Agriculture Office · Aringay, La Union</p>
+</section>
+<%- include('partials/foot') %>

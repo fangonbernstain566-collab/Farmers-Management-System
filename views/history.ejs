@@ -1,1 +1,9 @@
-<%- include('partials/head') %><header class="page-header"><h1>Distribution History</h1></header><div class="stats-grid"><div class="stat-card"><strong><%= records.length %></strong><span>Total Records</span></div><div class="stat-card"><strong><%= records.filter(r=>r.status==='pending').length %></strong><span>Pending</span></div><div class="stat-card"><strong><%= records.filter(r=>r.status==='received').length %></strong><span>Received</span></div></div><section class="card"><h2>Allocation Records</h2><%- include('partials/distributions',{records}) %></section><%- include('partials/foot') %>
+<%- include('partials/head') %>
+<header class="page-header"><div><span class="eyebrow">Management</span><h1>Distribution history</h1><p>Review resource allocations, receipt status, and supporting documentation.</p></div><a class="button button-outline" href="/notifications"><%- include('partials/icon', { name: 'receipt-text' }) %> Pending receipts</a></header>
+<div class="stats-grid">
+  <%- include('partials/stat', { label: 'Total Records', value: records.length, icon: 'history', detail: 'Distribution records in this view' }) %>
+  <%- include('partials/stat', { label: 'Pending', value: records.filter(r => r.status === 'pending').length, icon: 'truck', detail: 'Awaiting receipt confirmation' }) %>
+  <%- include('partials/stat', { label: 'Received', value: records.filter(r => r.status === 'received').length, icon: 'circle-check', detail: 'Confirmed resource receipts' }) %>
+</div>
+<section class="card"><div class="section-heading"><div><h2>Allocation records</h2><p>Resource quantities and distribution dates.</p></div></div><%- include('partials/distributions', { records }) %></section>
+<%- include('partials/foot') %>

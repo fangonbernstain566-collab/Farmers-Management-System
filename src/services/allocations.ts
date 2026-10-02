@@ -105,7 +105,7 @@ export async function distributeAll(): Promise<number> {
   });
 }
 export const distributionSelect =
-  "SELECT d.*,u.fullname,r.name resource_name,r.unit FROM distributions d JOIN users u ON u.id=d.farmer_id JOIN resources r ON r.id=d.resource_id";
+  "SELECT d.*,d.created_at::text batch_key,u.fullname,r.name resource_name,r.unit FROM distributions d JOIN users u ON u.id=d.farmer_id JOIN resources r ON r.id=d.resource_id";
 export async function history(
   user: { id: number; role: string },
   recent = false,
@@ -153,34 +153,43 @@ export async function deleteDocumentation(
 }
 export async function confirmReceipt(
   farmerId: number,
-  batch: string,
+  distributionId: number,
   proof: string,
 ): Promise<void> {
   await transaction(async (db) => {
     const records = await rows<Distribution>(
       db,
-      "SELECT * FROM distributions WHERE farmer_id=? AND created_at=? AND is_deleted=false AND status='pending' FOR UPDATE",
-      [farmerId, batch],
+      // Resolve batch identity in PostgreSQL: JavaScript Date loses microseconds.
+      // Lock the whole batch in ID order, including received rows, so a duplicate
+      // submission cannot replace proof or deadlock by locking another row first.
+      "SELECT * FROM distributions WHERE farmer_id=? AND created_at=(SELECT created_at FROM distributions WHERE id=? AND farmer_id=? AND is_deleted=false) AND is_deleted=false ORDER BY id FOR UPDATE",
+      [farmerId, distributionId, farmerId],
     );
-    if (!records.length)
+    const selected = records.find((record) => record.id === distributionId);
+    if (!selected)
       throw new HttpError(
         404,
-        "The selected pending distribution batch could not be found.",
+        "This receipt is unavailable. Refresh your notifications and try again.",
+      );
+    if (selected.status !== "pending")
+      throw new HttpError(
+        409,
+        "This receipt has already been confirmed or is no longer awaiting confirmation.",
       );
     await run(
       db,
-      "UPDATE distributions SET status='received',proof_image=?,received_at=NOW() WHERE farmer_id=? AND created_at=? AND is_deleted=false AND status='pending'",
-      [proof, farmerId, batch],
+      "UPDATE distributions SET status='received',proof_image=?,received_at=NOW() WHERE farmer_id=? AND created_at=(SELECT created_at FROM distributions WHERE id=? AND farmer_id=? AND is_deleted=false) AND is_deleted=false AND status='pending'",
+      [proof, farmerId, distributionId, farmerId],
     );
     await run(
       db,
-      "DELETE FROM notifications n USING distributions d WHERE d.id=n.distribution_id AND n.farmer_id=? AND d.farmer_id=? AND d.created_at=?",
-      [farmerId, farmerId, batch],
+      "DELETE FROM notifications n USING distributions d WHERE d.id=n.distribution_id AND n.farmer_id=? AND d.farmer_id=? AND d.created_at=(SELECT created_at FROM distributions WHERE id=? AND farmer_id=?)",
+      [farmerId, farmerId, distributionId, farmerId],
     );
     await run(
       db,
-      "DELETE FROM notifications WHERE farmer_id=? AND distribution_id IS NULL AND message LIKE 'The admin has distributed%' AND created_at=?",
-      [farmerId, batch],
+      "DELETE FROM notifications WHERE farmer_id=? AND distribution_id IS NULL AND message LIKE 'The admin has distributed%' AND created_at=(SELECT created_at FROM distributions WHERE id=? AND farmer_id=?)",
+      [farmerId, distributionId, farmerId],
     );
   });
 }

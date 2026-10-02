@@ -1,2 +1,35 @@
-<%- include('partials/head') %><header class="page-header"><h1><%= title %></h1></header><section class="card"><h2><%= user.role==='admin'?'Farmer Account Activity':'Notifications' %></h2><% if(!notifications.length){ %><p>No notifications yet.</p><% } %><% for(const n of notifications){ %><article class="notice <%= n.is_read?'':'unread' %>"><p><%= user.role==='admin'?n.detail:n.message %></p><small><%= user.role==='admin'?n.activity_time:n.created_at %></small><% if(!n.is_read){ %><form action="<%= user.role==='admin'?'/activities/read':'/notifications/'+n.id+'/read' %>" method="post"><%- include('partials/csrf') %><% if(user.role==='admin'){ %><input type="hidden" name="activity_key" value="<%= n.activity_key %>"><% } %><button>Mark as read</button></form><% } %></article><% } %></section>
-<section class="card"><h2>Digital Distribution Receipts</h2><% if(!batches.length){ %><p>No pending distribution receipts.</p><% } %><% for(const batch of batches){const first=batch[0]; %><article class="receipt-card"><h3>REC-<%= String(first.id).padStart(6,'0') %></h3><p><%= first.fullname %> · <%= first.created_at %> · Pending</p><div class="table-wrap"><table><thead><tr><th>Resource</th><th>Quantity</th><th>Unit</th></tr></thead><tbody><% for(const d of batch){ %><tr><td><%= d.resource_name %></td><td><%= d.allocated_quantity %></td><td><%= d.unit %></td></tr><% } %></tbody></table></div><a class="button" href="/receipts/<%= first.id %>">💾 Save / Print Receipt</a><% if(user.role==='farmer'){ %><form action="/receipts/confirm" method="post" enctype="multipart/form-data" data-confirm="Confirm receipt with this proof image?"><%- include('partials/csrf') %><input type="hidden" name="batch_received_at" value="<%= first.created_at %>"><label>Proof image (JPG, PNG, WEBP, 5 MB maximum)<input type="file" name="proof" accept="image/jpeg,image/png,image/webp" required></label><button>✓ Confirm Receipt</button></form><% } %></article><% } %></section><%- include('partials/foot') %>
+<%- include('partials/head') %>
+<header class="page-header"><div><span class="eyebrow">System</span><h1><%= title %></h1><p><%= user.role === 'admin' ? 'Follow farmer account activity and review pending receipts.' : 'Stay up to date and confirm receipt of your allocated resources.' %></p></div><span class="status-pill status-unread"><%= unread %> unread</span></header>
+<section class="card">
+  <div class="section-heading"><div><h2><%= user.role === 'admin' ? 'Farmer account activity' : 'Your notifications' %></h2><p>Unread updates remain highlighted until you mark them as read.</p></div></div>
+  <% if (!notifications.length) { %><%- include('partials/empty', { icon: 'bell', heading: 'No notifications yet', description: 'Account updates and distribution notifications will appear here.' }) %><% } %>
+  <% for (const n of notifications) { %>
+  <article class="notice <%= n.is_read ? '' : 'unread' %>">
+    <span class="stat-icon"><%- include('partials/icon', { name: user.role === 'admin' ? 'activity' : 'bell' }) %></span>
+    <div class="notice-body"><p><%= user.role === 'admin' ? n.detail : n.message %></p><small><%= user.role === 'admin' ? n.activity_time : n.created_at %></small>
+      <div class="notice-state"><span class="status-pill <%= n.is_read ? '' : 'status-unread' %>"><%= n.is_read ? 'Read' : 'Unread' %></span>
+        <% if (!n.is_read) { %><form action="<%= user.role === 'admin' ? '/activities/read' : '/notifications/' + n.id + '/read' %>" method="post"><%- include('partials/csrf') %><% if (user.role === 'admin') { %><input type="hidden" name="activity_key" value="<%= n.activity_key %>"><% } %><button class="button-ghost button-small" type="submit"><%- include('partials/icon', { name: 'check' }) %> Mark as read</button></form><% } %>
+      </div>
+    </div>
+  </article>
+  <% } %>
+</section>
+<section class="card">
+  <div class="section-heading"><div><h2>Pending distribution receipts</h2><p><%= user.role === 'farmer' ? 'Review each receipt and upload proof after receiving your resources.' : 'Receipts awaiting confirmation by their farmer beneficiaries.' %></p></div><%- include('partials/icon', { name: 'receipt-text' }) %></div>
+  <% if (!batches.length) { %><%- include('partials/empty', { icon: 'receipt-text', heading: 'No pending receipts', description: 'New distribution receipts will appear here when resources are allocated.' }) %><% } %>
+  <% for (const batch of batches) { const first = batch[0]; %>
+  <article class="receipt-card">
+    <header><h3>REC-<%= String(first.id).padStart(6, '0') %></h3><span class="status-pill status-pending">Pending</span></header><p class="muted"><%= first.fullname %> · <%= first.created_at %></p>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Pending receipt resources"><table><thead><tr><th scope="col">Resource</th><th scope="col">Quantity</th><th scope="col">Unit</th></tr></thead><tbody><% for (const d of batch) { %><tr><td><%= d.resource_name %></td><td class="quantity"><%= d.allocated_quantity %></td><td><%= d.unit %></td></tr><% } %></tbody></table></div>
+    <a class="button button-outline button-small" href="/receipts/<%= first.id %>"><%- include('partials/icon', { name: 'receipt-text' }) %> View / save receipt</a>
+    <% if (user.role === 'farmer') { %>
+    <form class="upload-panel" action="/receipts/confirm" method="post" enctype="multipart/form-data" data-confirm="Confirm receipt with this proof image?" data-confirm-title="Confirm resource receipt?" data-confirm-label="Confirm receipt">
+      <%- include('partials/csrf') %><input type="hidden" name="distribution_id" value="<%= first.id %>">
+      <label>Proof of receipt <span class="required" aria-hidden="true">*</span><input type="file" name="proof" accept="image/jpeg,image/png,image/webp" required><span class="form-help">JPG, PNG, or WEBP · maximum 5 MB. Upload proof of the resources you received.</span></label>
+      <button type="submit"><%- include('partials/icon', { name: 'upload' }) %> Confirm receipt</button>
+    </form>
+    <% } %>
+  </article>
+  <% } %>
+</section>
+<%- include('partials/foot') %>

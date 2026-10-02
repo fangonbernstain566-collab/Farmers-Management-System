@@ -81,9 +81,15 @@ export const tableSchema = z.enum([
   "distributions",
   "complaints",
 ]);
-export const batchSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+const receiptSelectionMessage =
+  "Please select a valid receipt. Refresh your notifications and try again.";
+export const receiptConfirmationSchema = z.object({
+  distribution_id: z
+    .string({ error: receiptSelectionMessage })
+    .regex(/^[1-9]\d{0,9}$/, receiptSelectionMessage)
+    .transform(Number)
+    .refine((value) => value <= 2147483647, receiptSelectionMessage),
+});
 export const activitySchema = z
   .string()
   .regex(/^(distribution|complaint):[1-9]\d{0,9}$/);

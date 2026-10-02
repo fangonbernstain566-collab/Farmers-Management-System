@@ -17,7 +17,7 @@ import {
   resourceSchema,
   reasonSchema,
   tableSchema,
-  batchSchema,
+  receiptConfirmationSchema,
   activitySchema,
 } from "../validation.js";
 import { requireRecord, HttpError } from "../errors.js";
@@ -373,7 +373,7 @@ pages.get("/notifications", async (req, res) => {
   );
   const groups = new Map<string, Distribution[]>();
   for (const d of pending) {
-    const key = d.farmer_id + ":" + d.created_at;
+    const key = d.farmer_id + ":" + d.batch_key;
     const group = groups.get(key) ?? [];
     group.push(d);
     groups.set(key, group);
@@ -418,11 +418,13 @@ pages.post(
   upload.single("proof"),
   checkCsrf,
   async (req, res) => {
-    const batch = batchSchema.parse(req.body.batch_received_at);
+    const { distribution_id: distributionId } = receiptConfirmationSchema.parse(
+      req.body ?? {},
+    );
     const proof = await saveImage(req.file);
     if (!proof) throw new HttpError(400, "Please select a valid proof image.");
     try {
-      await confirmReceipt(req.user!.id, batch, proof);
+      await confirmReceipt(req.user!.id, distributionId, proof);
     } catch (error) {
       await removeImage(proof);
       throw error;
@@ -446,8 +448,8 @@ pages.get("/receipts/:id", async (req, res) => {
   const records = await rows<Distribution>(
     pool,
     distributionSelect +
-      " WHERE d.farmer_id=? AND d.created_at=? AND d.is_deleted=false ORDER BY r.name",
-    [d.farmer_id, d.created_at],
+      " WHERE d.farmer_id=? AND d.created_at=(SELECT created_at FROM distributions WHERE id=? AND farmer_id=?) AND d.is_deleted=false ORDER BY r.name",
+    [d.farmer_id, d.id, d.farmer_id],
   );
   res.render("receipt", {
     title: "Digital Distribution Receipt",

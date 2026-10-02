@@ -1,2 +1,24 @@
-<%- include('partials/head') %><section class="card"><h1>FARMER'S PROFILE</h1><% if(profile.profile_pic&&profile.profile_pic!=='default.png'){ %><img class="profile-photo" src="/images/profile/<%= profile.id %>" alt="Profile photo"><% } %><dl class="profile-details"><% for(const [label,key] of [['Registry Reference ID','id'],['Full Name','fullname'],['Date of Birth','birthdate'],['Age','age'],['Gender','gender'],['Civil Status','civil_status'],['Place of Birth','place_of_birth'],['Home Address','address'],['Contact Number','contact_number'],['Land Owned (Hectares)','hectares']]){ %><dt><%= label %></dt><dd><%= profile[key]??'N/A' %></dd><% } %></dl><% if(user.role==='admin'){ %><a href="/farmers?edit=<%= profile.id %>">Edit Farmer</a> · <a href="/profile?id=<%= profile.id %>&view_history=1">View Activity History</a> · <a href="/farmers">Back to Farmers</a><% } %></section>
-<% if(viewHistory){ %><section class="card"><h2>Resource Allocations / Distributions</h2><%- include('partials/distributions',{records:allocations}) %></section><section class="card"><h2>Logged Complaints</h2><div class="table-wrap"><table><thead><tr><th>Date</th><th>Subject</th><th>Message</th></tr></thead><tbody><% for(const c of complaints){ %><tr><td><%= c.created_at %></td><td><%= c.subject %></td><td><%= c.message %></td></tr><% } %></tbody></table></div></section><% } %><%- include('partials/foot') %>
+<%- include('partials/head') %>
+<header class="page-header"><div><span class="eyebrow"><%= user.role === 'admin' ? 'Farmer directory' : 'Account' %></span><h1><%= user.role === 'admin' ? 'Farmer profile' : 'My profile' %></h1><p>Official registration and farm information.</p></div><% if (user.role === 'admin') { %><a class="button button-secondary" href="/farmers"><%- include('partials/icon', { name: 'arrow-left' }) %> Back to farmers</a><% } %></header>
+<section class="card">
+  <div class="profile-identity">
+    <% if (profile.profile_pic && profile.profile_pic !== 'default.png') { %><img class="profile-photo" src="/images/profile/<%= profile.id %>" alt="Profile photo of <%= profile.fullname %>"><% } else { %><span class="profile-placeholder"><%- include('partials/icon', { name: 'circle-user-round' }) %></span><% } %>
+    <div><h2><%= profile.fullname %></h2><p class="muted">Farmer registry · #<%= profile.id %></p><span class="status-pill <%= profile.is_deleted ? 'status-deleted' : 'status-active' %>"><%= profile.is_deleted ? 'Deleted account' : 'Active farmer' %></span></div>
+  </div>
+  <% if (user.role === 'admin') { %><div class="form-actions"><a class="button button-outline" href="/farmers?edit=<%= profile.id %>"><%- include('partials/icon', { name: 'pencil' }) %> Edit farmer</a><a class="button button-secondary" href="/profile?id=<%= profile.id %>&view_history=1"><%- include('partials/icon', { name: 'history' }) %> Activity history</a></div><% } %>
+</section>
+<div class="profile-grid">
+  <section class="card"><div class="section-heading"><h2>Personal information</h2><%- include('partials/icon', { name: 'circle-user-round' }) %></div>
+    <dl class="profile-details"><% for (const [label, key] of [['Full name', 'fullname'], ['Date of birth', 'birthdate'], ['Age', 'age'], ['Gender', 'gender'], ['Civil status', 'civil_status'], ['Place of birth', 'place_of_birth'], ['Home address', 'address'], ['Contact number', 'contact_number']]) { %><dt><%= label %></dt><dd><%= profile[key] ?? 'Not provided' %></dd><% } %></dl>
+  </section>
+  <section class="card"><div class="section-heading"><h2>Farm information</h2><%- include('partials/icon', { name: 'sprout' }) %></div>
+    <dl class="profile-details"><dt>Registry reference</dt><dd>#<%= profile.id %></dd><dt>Registered farm area</dt><dd><%= profile.hectares %> hectares</dd></dl>
+  </section>
+</div>
+<% if (viewHistory) { %>
+<section class="card"><div class="section-heading"><div><h2>Resource allocations &amp; distributions</h2><p>Recorded resource allocations for this farmer.</p></div></div><%- include('partials/distributions', { records: allocations }) %></section>
+<section class="card"><div class="section-heading"><div><h2>Complaint history</h2><p>Concerns logged by this farmer.</p></div></div>
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Farmer complaint history"><table><thead><tr><th scope="col">Date</th><th scope="col">Subject</th><th scope="col">Message</th></tr></thead><tbody><% for (const c of complaints) { %><tr><td><%= c.created_at %></td><td><%= c.subject %></td><td><%= c.message %></td></tr><% } if (!complaints.length) { %><tr><td colspan="3"><%- include('partials/empty', { icon: 'message-square-warning', heading: 'No complaints recorded', description: 'This farmer’s logged concerns will appear here.' }) %></td></tr><% } %></tbody></table></div>
+</section>
+<% } %>
+<%- include('partials/foot') %>

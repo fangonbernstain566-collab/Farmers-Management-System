@@ -1,6 +1,44 @@
-<%- include('partials/head') %><header class="page-header"><h1>Welcome back, <%= user.fullname %>!</h1><p>Manage farm resources and monitor distribution activity.</p></header>
-<div class="stats-grid"><% const cards=user.role==='admin'?[['Active Farmers',stats.farmers],['Registered Hectares',stats.hectares],['Active Resources',stats.resources],['Pending Distributions',stats.pending]]:[['My Hectares',stats.hectares],['Allocation Records',stats.records],['Pending Distributions',stats.pending],['Received',stats.received]];for(const [label,value] of cards){ %><div class="stat-card"><strong><%= value %></strong><span><%= label %></span></div><% } %></div>
-<section class="card"><h2>Distributed Resources by Date</h2><div class="bar-chart"><% const max=Math.max(1,...chart.map(c=>Number(c.total_quantity)));for(const c of chart){ %><div class="bar-row"><span><%= c.distribution_date %></span><meter min="0" max="<%= max %>" value="<%= c.total_quantity %>"><%= c.total_quantity %></meter><span><%= c.total_quantity %> quantity (<%= c.distribution_count %> records)</span></div><% } %><% if(!chart.length){ %><p>No distributions recorded.</p><% } %></div></section>
-<section class="card"><h2><%= user.role==='admin'?'Recent Distribution Activity':'My Recent Resource Allocations' %></h2><%- include('partials/distributions',{records}) %></section>
-<section class="card"><h2>Documentation</h2><div class="documentation-grid"><% for(const d of documentation){ %><article><a href="/images/proof/<%= d.id %>" target="_blank" rel="noopener"><img class="proof-thumbnail" src="/images/proof/<%= d.id %>" alt="Proof for LOG-<%= d.id %>"></a><p><%= d.fullname %> — <%= d.created_at %></p></article><% } %><% if(!documentation.length){ %><p>No documentation yet.</p><% } %></div></section>
-<section class="card"><h2>Quick Actions</h2><div class="quick-actions"><a href="/resources">Resources</a><a href="/notifications">Notifications &amp; Receipts</a><a href="/complaints">Complaints</a><a href="/history">History</a><% if(user.role==='admin'){ %><a href="/farmers">Farmers List</a><a href="/trash">Trash</a><% }else{ %><a href="/profile">My Profile</a><% } %></div></section><%- include('partials/foot') %>
+<%- include('partials/head') %>
+<header class="page-header">
+  <div><span class="eyebrow"><%= user.role === 'admin' ? 'Municipal overview' : 'My farm overview' %></span><h1>Welcome back, <%= user.fullname %></h1><p><%= user.role === 'admin' ? 'Manage agricultural resources and follow distribution activity.' : 'Keep track of your allocations, receipts, and farm information.' %></p></div>
+  <a class="button button-outline" href="/history"><%- include('partials/icon', { name: 'history' }) %> Distribution history</a>
+</header>
+<div class="stats-grid">
+  <% const cards = user.role === 'admin'
+    ? [['Active Farmers', stats.farmers, 'users', 'Registered farmer accounts'], ['Registered Hectares', stats.hectares, 'sprout', 'Total active farm area · ha'], ['Active Resources', stats.resources, 'package', 'Resource types in inventory'], ['Pending Distributions', stats.pending, 'truck', 'Awaiting receipt confirmation']]
+    : [['My Hectares', stats.hectares, 'sprout', 'Registered farm area · ha'], ['Allocation Records', stats.records, 'package', 'Your distribution records'], ['Pending Distributions', stats.pending, 'truck', 'Awaiting your confirmation'], ['Received', stats.received, 'circle-check', 'Confirmed distribution records']];
+    for (const [label, value, icon, detail] of cards) { %>
+    <%- include('partials/stat', { label, value, icon, detail }) %>
+  <% } %>
+</div>
+<section class="card">
+  <div class="section-heading"><div><h2>Distribution activity by date</h2><p>Recorded quantities and distribution counts.</p></div><%- include('partials/icon', { name: 'activity' }) %></div>
+  <div class="bar-chart">
+    <% const max = Math.max(1, ...chart.map(c => Number(c.total_quantity))); for (const c of chart) { %>
+    <div class="bar-row"><span><%= c.distribution_date %></span><meter min="0" max="<%= max %>" value="<%= c.total_quantity %>" aria-label="Quantity distributed on <%= c.distribution_date %>"><%= c.total_quantity %></meter><span><%= c.total_quantity %> quantity · <%= c.distribution_count %> records</span></div>
+    <% } if (!chart.length) { %><%- include('partials/empty', { icon: 'activity', heading: 'No distribution activity yet', description: 'Recorded distributions will appear here by date.' }) %><% } %>
+  </div>
+</section>
+<section class="card">
+  <div class="section-heading"><div><h2><%= user.role === 'admin' ? 'Recent distributions' : 'My recent allocations' %></h2><p>Resource allocations and receipt documentation.</p></div><a class="button button-ghost button-small" href="/history">View history <%- include('partials/icon', { name: 'arrow-right' }) %></a></div>
+  <%- include('partials/distributions', { records }) %>
+</section>
+<div class="dashboard-grid">
+  <section class="card">
+    <div class="section-heading"><div><h2>Receipt documentation</h2><p>Proof images from confirmed receipts.</p></div></div>
+    <div class="documentation-grid">
+      <% for (const d of documentation) { %>
+      <article><a href="/images/proof/<%= d.id %>" target="_blank" rel="noopener"><img class="proof-thumbnail" src="/images/proof/<%= d.id %>" alt="Proof for LOG-<%= d.id %>" loading="lazy"></a><p><%= d.fullname %><br><small><%= d.created_at %></small></p></article>
+      <% } if (!documentation.length) { %><%- include('partials/empty', { icon: 'receipt-text', heading: 'No documentation yet', description: 'Proof images will appear after farmers confirm receipt of resources.' }) %><% } %>
+    </div>
+  </section>
+  <section class="card">
+    <div class="section-heading"><div><h2>Quick access</h2><p>Your everyday agriculture management tools.</p></div></div>
+    <div class="quick-actions">
+      <% const actions = [['/resources', 'package', 'Resources'], ['/notifications', 'bell', 'Notifications & Receipts'], ['/complaints', 'message-square-warning', 'Complaints'], ['/history', 'history', 'Distribution History'], ...(user.role === 'admin' ? [['/farmers', 'users', 'Farmers'], ['/trash', 'trash-2', 'Trash']] : [['/profile', 'circle-user-round', 'My Profile']])]; for (const [href, icon, label] of actions) { %>
+      <a href="<%= href %>"><%- include('partials/icon', { name: icon }) %><%= label %></a>
+      <% } %>
+    </div>
+  </section>
+</div>
+<%- include('partials/foot') %>

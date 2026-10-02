@@ -1,3 +1,11 @@
-<% const value=(name)=>record?.[name]??'';const fields=[['fullname','Full Registered Name','text'],['birthdate','Birthdate','date'],['age','Age','number'],['place_of_birth','Place of Birth','text'],['address','Complete Home Address','text'],['contact_number','Contact Number','text']];for(const [name,label,type] of fields){ %><label><%= label %><input name="<%= name %>" type="<%= type %>" value="<%= value(name) %>" required <% if(type==='number'){ %>min="0" max="130"<% } %> maxlength="<%= name==='fullname'?100:name==='contact_number'?20:255 %>"></label><% } %>
-<label>Gender<select name="gender" required><option value="">Select Gender</option><% for(const v of ['Male','Female','Other']){ %><option <%= value('gender')===v?'selected':'' %>><%= v %></option><% } %></select></label>
-<label>Civil Status<select name="civil_status" required><option value="">Select Civil Status</option><% for(const v of ['Single','Married','Widowed','Separated']){ %><option <%= value('civil_status')===v?'selected':'' %>><%= v %></option><% } %></select></label>
+<% const value = name => record?.[name] ?? ''; const fields = [['fullname', 'Full registered name', 'text', 'name'], ['birthdate', 'Date of birth', 'date', 'bday'], ['age', 'Age', 'number', 'off'], ['place_of_birth', 'Place of birth', 'text', 'off'], ['address', 'Complete home address', 'text', 'street-address'], ['contact_number', 'Contact number', 'text', 'tel']]; for (const [name, label, type, autocomplete] of fields) { %>
+<label><%= label %> <span class="required" aria-hidden="true">*</span>
+  <input name="<%= name %>" type="<%= type %>" value="<%= value(name) %>" autocomplete="<%= autocomplete %>" required <% if (type === 'number') { %>min="0" max="130"<% } %> maxlength="<%= name === 'fullname' ? 100 : name === 'contact_number' ? 20 : 255 %>">
+</label>
+<% } %>
+<label>Gender <span class="required" aria-hidden="true">*</span>
+  <select name="gender" required><option value="">Select gender</option><% for (const v of ['Male', 'Female', 'Other']) { %><option <%= value('gender') === v ? 'selected' : '' %>><%= v %></option><% } %></select>
+</label>
+<label>Civil status <span class="required" aria-hidden="true">*</span>
+  <select name="civil_status" required><option value="">Select civil status</option><% for (const v of ['Single', 'Married', 'Widowed', 'Separated']) { %><option <%= value('civil_status') === v ? 'selected' : '' %>><%= v %></option><% } %></select>
+</label>

@@ -55,6 +55,8 @@ export interface Distribution {
   deleted_by: number | null;
   deleted_at: string | null;
   created_at: string;
+  // Exact PostgreSQL timestamp text for grouping; never submitted by the client.
+  batch_key?: string;
   fullname: string;
   resource_name: string;
   unit: string;

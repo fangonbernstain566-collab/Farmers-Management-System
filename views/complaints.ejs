@@ -1,3 +1,34 @@
-<%- include('partials/head') %><header class="page-header"><h1>Complaints</h1></header>
-<% if(user.role==='farmer'||edit){ %><section class="card"><h2><%= edit?'Edit Complaint':'Submit a Complaint' %></h2><form action="<%= edit?'/complaints/'+edit.id+'/edit':'/complaints' %>" method="post" enctype="multipart/form-data" data-confirm="Save this complaint?"><%- include('partials/csrf') %><label>Subject<input name="subject" maxlength="150" value="<%= edit?.subject??'' %>" required></label><label>Message<textarea name="message" rows="5" maxlength="20000" required><%= edit?.message??'' %></textarea></label><label>Picture (optional, JPG/PNG/WEBP, max 5 MB)<input name="complaint_image" type="file" accept="image/jpeg,image/png,image/webp"></label><button><%= edit?'Save Changes':'Send Complaint' %></button><% if(edit){ %><a href="/complaints">Cancel</a><% } %></form></section><% } %>
-<section class="card"><h2><%= user.role==='admin'?'Complaints Record':'My Complaints' %></h2><% if(!complaints.length){ %><p>No complaints yet.</p><% } %><div class="complaint-list"><% for(const c of complaints){ %><article class="complaint-card"><header><h3><%= c.subject %></h3><span class="status-pill status-<%= c.status %>"><%= c.status %></span></header><p class="muted"><%= c.fullname %> · <%= c.created_at %></p><p class="message"><%= c.message %></p><% if(c.image_path){ %><a href="/images/complaint/<%= c.id %>" target="_blank" rel="noopener">View picture</a><% } %><div class="actions"><a href="/complaints?edit=<%= c.id %>">Edit</a><form action="/complaints/<%= c.id %>/delete" method="post" data-confirm="Move this complaint to Trash?"><%- include('partials/csrf') %><button class="danger">Delete</button></form><% if(user.role==='admin'&&c.status==='pending'){ %><form action="/complaints/<%= c.id %>/confirm" method="post" data-confirm="Confirm this complaint and notify the farmer?"><%- include('partials/csrf') %><button>Confirm Complaint</button></form><% } %></div></article><% } %></div></section><%- include('partials/foot') %>
+<%- include('partials/head') %>
+<header class="page-header"><div><span class="eyebrow">Management</span><h1>Complaints</h1><p><%= user.role === 'admin' ? 'Review farmer concerns and confirm complaints.' : 'Submit concerns and keep track of your complaints.' %></p></div><% if (user.role === 'farmer' && !edit) { %><a class="button" href="#complaint-form"><%- include('partials/icon', { name: 'plus' }) %> Submit a complaint</a><% } %></header>
+<% if (user.role === 'farmer' || edit) { %>
+<section class="card" id="complaint-form">
+  <div class="section-heading"><div><h2><%= edit ? 'Edit complaint' : 'Submit a complaint' %></h2><p>Describe your concern and attach a picture if helpful.</p></div></div>
+  <p class="form-note">Fields marked <span class="required" aria-hidden="true">*</span> are required.</p>
+  <form action="<%= edit ? '/complaints/' + edit.id + '/edit' : '/complaints' %>" method="post" enctype="multipart/form-data" data-confirm="Save this complaint?" data-confirm-title="<%= edit ? 'Save complaint changes?' : 'Submit complaint?' %>" data-confirm-label="<%= edit ? 'Save changes' : 'Submit complaint' %>">
+    <%- include('partials/csrf') %>
+    <label>Subject <span class="required" aria-hidden="true">*</span><input name="subject" maxlength="150" value="<%= edit?.subject ?? '' %>" required></label>
+    <label>Message <span class="required" aria-hidden="true">*</span><textarea name="message" rows="5" maxlength="20000" required><%= edit?.message ?? '' %></textarea></label>
+    <label>Picture (optional)<input name="complaint_image" type="file" accept="image/jpeg,image/png,image/webp"><span class="form-help">JPG, PNG, or WEBP · maximum 5 MB.<%= edit ? ' Leave empty to keep the existing attachment.' : '' %></span></label>
+    <div class="form-actions"><button type="submit"><%- include('partials/icon', { name: edit ? 'save' : 'send' }) %> <%= edit ? 'Save changes' : 'Send complaint' %></button><% if (edit) { %><a class="button button-secondary" href="/complaints">Cancel</a><% } %></div>
+  </form>
+</section>
+<% } %>
+<section class="card">
+  <div class="section-heading"><div><h2><%= user.role === 'admin' ? 'Complaint records' : 'My complaints' %></h2><p>Complaint details, attachments, and current status.</p></div><span class="status-pill"><%= complaints.length %> records</span></div>
+  <% if (!complaints.length) { %><%- include('partials/empty', { icon: 'message-square-warning', heading: 'No complaints yet', description: user.role === 'admin' ? 'Farmer concerns will appear here when submitted.' : 'Your submitted concerns and their status will appear here.' }) %><% } %>
+  <div class="complaint-list">
+    <% for (const c of complaints) { %>
+    <article class="complaint-card">
+      <header><h3><%= c.subject %></h3><span class="status-pill status-<%= c.status %>"><%= c.status %></span></header>
+      <p class="muted"><%= c.fullname %> · <%= c.created_at %></p><p class="message"><%= c.message %></p>
+      <% if (c.image_path) { %><a class="attachment" href="/images/complaint/<%= c.id %>" target="_blank" rel="noopener"><%- include('partials/icon', { name: 'paperclip' }) %> View attached picture</a><% } %>
+      <div class="actions">
+        <a class="button button-ghost button-small" href="/complaints?edit=<%= c.id %>"><%- include('partials/icon', { name: 'pencil' }) %> Edit</a>
+        <form action="/complaints/<%= c.id %>/delete" method="post" data-confirm="This complaint will be moved to Trash and can be restored later." data-confirm-title="Move complaint to Trash?" data-confirm-label="Move to Trash" data-confirm-danger="true"><%- include('partials/csrf') %><button class="danger button-small" type="submit"><%- include('partials/icon', { name: 'trash-2' }) %> Delete</button></form>
+        <% if (user.role === 'admin' && c.status === 'pending') { %><form action="/complaints/<%= c.id %>/confirm" method="post" data-confirm="Confirm this complaint and notify the farmer?" data-confirm-title="Confirm complaint?" data-confirm-label="Confirm complaint"><%- include('partials/csrf') %><button class="button-outline button-small" type="submit"><%- include('partials/icon', { name: 'circle-check' }) %> Confirm complaint</button></form><% } %>
+      </div>
+    </article>
+    <% } %>
+  </div>
+</section>
+<%- include('partials/foot') %>

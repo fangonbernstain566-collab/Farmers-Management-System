@@ -1,6 +1,38 @@
-<%- include('partials/head') %><header class="page-header"><h1>Resource Management</h1></header>
-<% if(user.role==='admin'){ %><section class="card"><h2>Add New Resource</h2><form action="/resources" method="post"><%- include('partials/csrf') %><div class="form-grid"><label>Resource Name<input name="name" maxlength="100" required></label><label>Quantity<input name="total_quantity" type="number" min="0.0001" max="99999999999" step="0.0001" required></label><label>Unit<input name="unit" maxlength="20" required></label></div><button>➕ Add Resource</button></form></section><% } %>
-<section class="card"><h2>Available Resources Analytics</h2><div class="bar-chart"><% const max=Math.max(1,...resources.map(r=>Number(r.total_quantity)));for(const r of resources){ %><div class="bar-row"><span><%= r.name %></span><meter min="0" max="<%= max %>" value="<%= r.total_quantity %>"><%= r.total_quantity %></meter><span><%= r.total_quantity %> <%= r.unit %></span></div><% } %></div></section>
-<section class="card"><h2>Resource Inventory</h2><% if(user.role==='admin'){ %><form action="/resources/distribute" method="post" data-confirm="Distribute all available stock proportionally based on active farmers’ hectares?"><%- include('partials/csrf') %><button>🚀 Distribute All Resources</button></form><% } %>
-<form action="/resources/delete" method="post" data-confirm="Move selected resources to Trash?"><%- include('partials/csrf') %><div class="table-wrap"><table><thead><tr><% if(user.role==='admin'){ %><th><label><input type="checkbox" data-select-all>All</label></th><% } %><th>Reference</th><th>Resource</th><th>Available Stock</th><th>Unit</th><th>Status</th></tr></thead><tbody><% for(const r of resources){ %><tr><% if(user.role==='admin'){ %><td><input type="checkbox" name="selected_resources" value="<%= r.id %>" aria-label="Select <%= r.name %>"></td><% } %><td>RES-<%= String(r.id).padStart(5,'0') %></td><td><%= r.name %></td><td><%= r.total_quantity %></td><td><%= r.unit %></td><td><%= Number(r.total_quantity)>0?'Available':'Out of stock' %></td></tr><% } %><% if(!resources.length){ %><tr><td colspan="6">No resources found.</td></tr><% } %></tbody></table></div><% if(user.role==='admin'){ %><button class="danger">🗑 Delete Selected</button><% } %></form></section>
-<% if(user.role==='admin'){ %><section class="card"><h2>Farmer Beneficiaries</h2><div class="table-wrap"><table><thead><tr><th>Farmer</th><th>Contact Number</th><th>Registered Farm Area</th></tr></thead><tbody><% for(const f of farmers){ %><tr><td><a href="/profile?id=<%= f.id %>"><%= f.fullname %></a><br><%= f.address %></td><td><%= f.contact_number %></td><td><%= f.hectares %> ha</td></tr><% } %></tbody></table></div></section><% } %><%- include('partials/foot') %>
+<%- include('partials/head') %>
+<header class="page-header"><div><span class="eyebrow">Management</span><h1>Resources</h1><p><%= user.role === 'admin' ? 'Manage inventory and allocate resources using registered farm areas.' : 'View available agricultural resources and stock quantities.' %></p></div><% if (user.role === 'admin') { %><a class="button" href="#add-resource"><%- include('partials/icon', { name: 'plus' }) %> Add resource</a><% } %></header>
+<section class="card">
+  <div class="section-heading"><div><h2>Resource inventory</h2><p>Current stock, units, and availability.</p></div><span class="status-pill"><%= resources.length %> resource types</span></div>
+  <% if (user.role === 'admin') { %>
+  <div class="toolbar"><p class="muted">Distribution uses all available stock and active farmers’ hectares.</p><form action="/resources/distribute" method="post" data-confirm="Distribute all available stock proportionally based on active farmers’ hectares?" data-confirm-title="Distribute resources?" data-confirm-label="Distribute all"><%- include('partials/csrf') %><button type="submit"><%- include('partials/icon', { name: 'truck' }) %> Distribute all</button></form></div>
+  <% } %>
+  <% if (user.role === 'admin') { %><form action="/resources/delete" method="post" data-confirm="Selected resources will be moved to Trash and can be restored later." data-confirm-title="Move resources to Trash?" data-confirm-label="Move to Trash" data-confirm-danger="true"><%- include('partials/csrf') %><% } %>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Resource inventory table"><table><thead><tr>
+      <% if (user.role === 'admin') { %><th scope="col"><label class="checkbox-label"><input type="checkbox" data-select-all> All</label></th><% } %><th scope="col">Reference</th><th scope="col">Resource</th><th scope="col">Available stock</th><th scope="col">Unit</th><th scope="col">Status</th>
+    </tr></thead><tbody>
+      <% for (const r of resources) { %><tr><% if (user.role === 'admin') { %><td><input type="checkbox" name="selected_resources" value="<%= r.id %>" aria-label="Select <%= r.name %>"></td><% } %><td class="reference">RES-<%= String(r.id).padStart(5, '0') %></td><td><strong><%= r.name %></strong></td><td class="quantity"><%= r.total_quantity %></td><td><%= r.unit %></td><td><span class="status-pill <%= Number(r.total_quantity) > 0 ? 'status-available' : 'status-inactive' %>"><%= Number(r.total_quantity) > 0 ? 'Available' : 'Out of stock' %></span></td></tr><% } %>
+      <% if (!resources.length) { %><tr><td colspan="<%= user.role === 'admin' ? 6 : 5 %>"><%- include('partials/empty', { icon: 'warehouse', heading: 'No resources in inventory', description: user.role === 'admin' ? 'Add a resource below to begin managing stock.' : 'Available agricultural resources will appear here.' }) %></td></tr><% } %>
+    </tbody></table></div>
+    <% if (user.role === 'admin') { %><div class="form-actions"><button class="danger button-small" type="submit" data-delete-selected><%- include('partials/icon', { name: 'trash-2' }) %> Delete selected</button><span class="muted" data-selection-count aria-live="polite"></span></div></form><% } %>
+</section>
+<section class="card">
+  <div class="section-heading"><div><h2>Available stock overview</h2><p>Each resource retains its own inventory unit.</p></div><%- include('partials/icon', { name: 'package' }) %></div>
+  <div class="bar-chart"><% const max = Math.max(1, ...resources.map(r => Number(r.total_quantity))); for (const r of resources) { %><div class="bar-row"><span><%= r.name %></span><meter min="0" max="<%= max %>" value="<%= r.total_quantity %>" aria-label="Available stock of <%= r.name %>"><%= r.total_quantity %></meter><span><%= r.total_quantity %> <%= r.unit %></span></div><% } if (!resources.length) { %><%- include('partials/empty', { icon: 'package', heading: 'No stock to display', description: 'Stock levels will appear when resources are added.' }) %><% } %></div>
+</section>
+<% if (user.role === 'admin') { %>
+<section class="card" id="add-resource">
+  <div class="section-heading"><div><h2>Add resource</h2><p>Record a resource name, available quantity, and unit.</p></div></div>
+  <p class="form-note">All fields are required.</p>
+  <form action="/resources" method="post"><%- include('partials/csrf') %><div class="form-grid">
+    <label>Resource name <span class="required" aria-hidden="true">*</span><input name="name" maxlength="100" required></label>
+    <label>Quantity <span class="required" aria-hidden="true">*</span><input name="total_quantity" type="number" min="0.0001" max="99999999999" step="0.0001" required><span class="form-help">Use a positive quantity with up to four decimal places.</span></label>
+    <label>Unit <span class="required" aria-hidden="true">*</span><input name="unit" maxlength="20" required><span class="form-help">For example, kg, bags, or pieces.</span></label>
+  </div><div class="form-actions"><button type="submit"><%- include('partials/icon', { name: 'plus' }) %> Add resource</button></div></form>
+</section>
+<section class="card">
+  <div class="section-heading"><div><h2>Farmer beneficiaries</h2><p>Registered farm areas used by the existing allocation workflow.</p></div></div>
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Farmer beneficiaries table"><table><thead><tr><th scope="col">Farmer</th><th scope="col">Contact number</th><th scope="col">Registered farm area</th></tr></thead><tbody>
+    <% for (const f of farmers) { %><tr><td><a href="/profile?id=<%= f.id %>"><%= f.fullname %></a><small><%= f.address %></small></td><td><%= f.contact_number %></td><td class="quantity"><%= f.hectares %> ha</td></tr><% } if (!farmers.length) { %><tr><td colspan="3"><%- include('partials/empty', { icon: 'users', heading: 'No beneficiaries yet', description: 'Registered farmers and their farm areas will appear here.' }) %></td></tr><% } %>
+  </tbody></table></div>
+</section>
+<% } %>
+<%- include('partials/foot') %>

@@ -7,9 +7,9 @@ try {
     "SELECT version FROM app_migrations WHERE version='001_typescript_compatibility'",
   );
   if (!migration) throw new Error("Migration required");
-  const server = createApp().listen(config.PORT, () =>
-    console.log(`Aringay Agriculture listening on port ${config.PORT}`),
-  );
+  const server = createApp().listen(config.PORT, () => {
+    console.log(`Aringay Agriculture is Running In Localhost: http://localhost:${config.PORT}`);
+  });
   server.requestTimeout = 30000;
   server.headersTimeout = 15000;
   let closing = false;

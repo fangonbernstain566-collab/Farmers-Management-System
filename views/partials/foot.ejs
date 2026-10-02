@@ -1,1 +1,17 @@
-<% if(user){ %></main></div><% } %></body></html>
+    </main>
+<% if (user && !['/login', '/register'].includes(path)) { %>
+    <footer class="app-footer">Aringay Agriculture <span>Municipal Agriculture Management System</span></footer>
+  </div>
+</div>
+<% } %>
+<dialog class="confirm-dialog" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <div class="dialog-icon"><%- include('icon', { name: 'triangle-alert' }) %></div>
+  <h2 id="confirm-title">Confirm action</h2>
+  <p id="confirm-message"></p>
+  <div class="form-actions">
+    <button type="button" class="button-secondary" data-confirm-cancel autofocus>Cancel</button>
+    <button type="button" data-confirm-submit>Continue</button>
+  </div>
+</dialog>
+</body>
+</html>

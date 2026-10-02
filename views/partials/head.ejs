@@ -1,5 +1,76 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= title %> | Aringay Agriculture</title><link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/legacy-pages.css"><link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js" defer></script></head><body class="<%= user ? 'app-page' : 'auth-page' %>">
-<% if(flash){ %><div class="toast toast-<%= flash.type %>" role="status"><span class="toast-message"><%= flash.message %></span><button type="button" class="toast-close" aria-label="Dismiss message">×</button></div><% } %>
-<% if(user){ %><div class="app-container"><aside class="sidebar"><div class="sidebar-brand"><img src="/assets/logo.png" class="sidebar-logo" alt="Aringay Agriculture logo"><div class="sidebar-brand-text"><strong>Farm Management</strong><span class="account-label"><%= user.role==='admin'?'Admin Account':'Farmer Account' %></span><span class="location-label">Aringay Agriculture</span></div></div><nav aria-label="Main navigation"><ul class="sidebar-menu">
-<% const links=[['/dashboard','🏠','Dashboard'],['/resources','🌱','Resources'],['/notifications','🔔','Notifications'],['/history','📋','History'],['/complaints','💬','Complaints'],...(user.role==='admin'?[['/farmers','👨‍🌾','Farmers List'],['/trash','🗑️','Trash']]:[['/profile','👤','My Profile']])];for(const [href,icon,label] of links){ %><li><a href="<%= href %>" class="<%= path===href?'active':'' %>"><span class="menu-icon" aria-hidden="true"><%= icon %></span><span class="menu-text"><%= label %></span><% if(href==='/notifications'&&unread){ %><span class="notification-badge"><%= unread>99?'99+':unread %></span><% } %></a></li><% } %>
-<li class="logout-item"><form action="/logout" method="post" data-confirm="End your session?"><%- include('csrf') %><button class="logout-button" type="submit">🚪 Logout</button></form></li></ul></nav></aside><main class="content"><% } %>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#195c42">
+  <link rel="icon" href="/assets/logo.png" type="image/png">
+  <title><%= title %> | Aringay Agriculture</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<% const standalone = !user || ['/login', '/register'].includes(path); %>
+<body class="<%= standalone ? 'auth-page' : 'app-page' %>">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<div class="toast-region" role="region" aria-label="Messages">
+  <% if (flash) { %>
+  <div class="toast toast-<%= flash.type %>" role="<%= flash.type === 'error' ? 'alert' : 'status' %>">
+    <span class="toast-icon"><%- include('icon', { name: flash.type === 'error' ? 'circle-alert' : flash.type === 'warning' ? 'triangle-alert' : flash.type === 'success' ? 'circle-check' : 'info' }) %></span>
+    <span class="toast-message"><%= flash.message %></span>
+    <button type="button" class="button-icon toast-close" aria-label="Dismiss message"><%- include('icon', { name: 'x' }) %></button>
+  </div>
+  <% } %>
+</div>
+<% if (!standalone) { %>
+<div class="app-container">
+  <aside class="sidebar" id="app-sidebar" aria-label="Application sidebar" tabindex="-1">
+    <a class="sidebar-brand" href="/dashboard">
+      <img src="/assets/logo.png" class="sidebar-logo" alt="">
+      <span><strong>Aringay Agriculture</strong><small>Management System</small></span>
+    </a>
+    <button class="sidebar-close button-icon" type="button" data-sidebar-close aria-label="Close navigation"><%- include('icon', { name: 'x' }) %></button>
+    <nav aria-label="Main navigation">
+      <% const groups = [
+        ['Overview', [['/dashboard', 'layout-dashboard', 'Dashboard']]],
+        ['Management', [...(user.role === 'admin' ? [['/farmers', 'users', 'Farmers']] : []), ['/resources', 'package', 'Resources'], ['/history', 'truck', 'Distributions'], ['/complaints', 'message-square-warning', 'Complaints']]],
+        ['System', [['/notifications', 'bell', user.role === 'admin' ? 'Activity & Notifications' : 'Notifications'], ...(user.role === 'admin' ? [['/trash', 'trash-2', 'Trash']] : [])]],
+        ...(user.role === 'farmer' ? [['Account', [['/profile', 'circle-user-round', 'My Profile']]]] : [])
+      ]; for (const [group, links] of groups) { %>
+      <div class="nav-group">
+        <p class="nav-label"><%= group %></p>
+        <ul class="sidebar-menu">
+          <% for (const [href, icon, label] of links) { const active = path === href || (href === '/notifications' && path.startsWith('/receipts/')) || (href === '/farmers' && path === '/profile' && user.role === 'admin'); %>
+          <li><a href="<%= href %>" class="nav-link <%= active ? 'active' : '' %>" <% if (active) { %>aria-current="page"<% } %>>
+            <%- include('icon', { name: icon }) %><span><%= label %></span>
+            <% if (href === '/notifications' && unread) { %><span class="notification-badge" aria-label="<%= unread %> unread"><%= unread > 99 ? '99+' : unread %></span><% } %>
+          </a></li>
+          <% } %>
+        </ul>
+      </div>
+      <% } %>
+    </nav>
+    <div class="sidebar-account">
+      <span class="account-avatar"><%- include('icon', { name: 'circle-user-round' }) %></span>
+      <div><strong><%= user.fullname %></strong><small><%= user.role === 'admin' ? 'Administrator' : 'Farmer' %></small></div>
+    </div>
+    <form action="/logout" method="post" class="logout-form" data-confirm="End your session?" data-confirm-title="Sign out?" data-confirm-label="Sign out">
+      <%- include('csrf') %>
+      <button class="logout-button" type="submit"><%- include('icon', { name: 'log-out' }) %> Sign out</button>
+    </form>
+  </aside>
+  <button type="button" class="sidebar-backdrop" data-sidebar-close aria-label="Close navigation" hidden></button>
+  <div class="app-main">
+    <header class="topbar">
+      <div class="topbar-context">
+        <button type="button" class="button-icon sidebar-trigger" data-sidebar-toggle aria-controls="app-sidebar" aria-expanded="false" aria-label="Open navigation"><%- include('icon', { name: 'menu' }) %></button>
+        <span class="topbar-location">Aringay, La Union</span><span class="topbar-divider" aria-hidden="true">/</span><span><%= title %></span>
+      </div>
+      <div class="topbar-actions">
+        <a class="button-icon notification-shortcut" href="/notifications" aria-label="Notifications<%= unread ? ', ' + unread + ' unread' : '' %>" title="Notifications"><%- include('icon', { name: 'bell' }) %><% if (unread) { %><span class="unread-dot"></span><% } %></a>
+        <span class="role-badge"><%= user.role === 'admin' ? 'Administrator' : 'Farmer' %></span>
+      </div>
+    </header>
+    <main class="content" id="main-content" tabindex="-1">
+<% } else { %>
+<main class="auth-main" id="main-content" tabindex="-1">
+<% } %>

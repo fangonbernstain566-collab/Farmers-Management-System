@@ -296,7 +296,7 @@ suite("isolated PostgreSQL workflow integration", () => {
         await other
           .post("/receipts/confirm")
           .field("_csrf", otherToken)
-          .field("batch_received_at", d.created_at)
+          .field("distribution_id", String(d.id))
           .attach("proof", proof, "proof.png")
       ).status,
     ).toBe(404);
@@ -305,7 +305,7 @@ suite("isolated PostgreSQL workflow integration", () => {
         await farmer
           .post("/receipts/confirm")
           .field("_csrf", farmerToken)
-          .field("batch_received_at", d.created_at)
+          .field("distribution_id", String(d.id))
           .attach("proof", proof, "proof.png")
       ).status,
     ).toBe(302);
@@ -323,10 +323,10 @@ suite("isolated PostgreSQL workflow integration", () => {
         await farmer
           .post("/receipts/confirm")
           .field("_csrf", farmerToken)
-          .field("batch_received_at", d.created_at)
+          .field("distribution_id", String(d.id))
           .attach("proof", proof, "proof.png")
       ).status,
-    ).toBe(404);
+    ).toBe(409);
   });
   it("renders every major authenticated page with live data", async () => {
     for (const url of [
